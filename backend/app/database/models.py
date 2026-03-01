@@ -69,6 +69,7 @@ class TaxReturn(Base):
     occupation = Column(String, nullable=True)
     direct_deposit_routing = Column(String, nullable=True)
     direct_deposit_account = Column(String, nullable=True)
+    extra_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -91,6 +92,7 @@ class W2Form(Base):
     local_withheld = Column(Float, nullable=True)
     box12_code = Column(String, nullable=True)
     box12_amount = Column(Float, nullable=True)
+    extra_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

@@ -2,12 +2,6 @@
 
 import { useState, useRef } from 'react'
 
-const SUGGESTIONS = [
-  "I have a W-2",
-  "I worked freelance",
-  "I have student loans",
-]
-
 interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
@@ -33,20 +27,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   return (
     <div>
-      {/* Suggestion chips */}
-      <div className="flex gap-2 mb-2 flex-wrap">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => { onSend(s); inputRef.current?.focus() }}
-            disabled={disabled}
-            className="rounded-full bg-green-pale text-green text-[12px] px-3 py-1 cursor-pointer hover:bg-green-light transition-colors disabled:opacity-40"
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
       {/* Input row */}
       <div className="flex items-center border border-hairline rounded-xl bg-cream px-3 h-11">
         <input
@@ -61,7 +41,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         <button
           onClick={send}
           disabled={disabled || !value.trim()}
-          className="w-7 h-7 rounded-full bg-green flex items-center justify-center ml-2 disabled:opacity-40 transition-opacity"
+          className="w-7 h-7 rounded-full bg-green flex items-center justify-center ml-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-opacity"
           aria-label="Send message"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

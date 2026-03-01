@@ -18,23 +18,15 @@ function CreditCard({ title, description, value }: CreditCardProps) {
     <div className="bg-white border border-hairline rounded-xl p-5 mb-3">
       <p className="text-[15px] font-bold text-ink">{title}</p>
       <p className="text-[13px] text-muted mt-1 mb-3">{description}</p>
-      {editing ? (
-        <input
-          autoFocus
-          value={localVal}
-          onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => setEditing(false)}
-          placeholder="0.00"
-          className="text-[14px] font-mono border-b-2 border-green outline-none bg-transparent w-full"
-        />
-      ) : (
-        <p
-          className="font-mono text-[14px] text-ink cursor-pointer hover:text-green transition-colors"
-          onClick={() => setEditing(true)}
-        >
-          {localVal ? `$${parseFloat(localVal).toFixed(2)}` : 'Click to enter amount'}
-        </p>
-      )}
+      <input
+        readOnly={!editing}
+        value={localVal}
+        placeholder="0.00"
+        onChange={(e) => setLocalVal(e.target.value)}
+        onFocus={() => setEditing(true)}
+        onBlur={() => setEditing(false)}
+        className={`font-mono text-[14px] border-b-2 outline-none bg-transparent w-full transition-colors ${editing ? 'border-green text-ink' : 'border-transparent cursor-pointer hover:text-green'} ${!editing && !localVal ? 'text-muted' : 'text-ink'}`}
+      />
     </div>
   )
 }

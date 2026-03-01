@@ -10,22 +10,24 @@ See [FRONTEND.md](./FRONTEND.md) for the Next.js frontend that consumes this API
 
 ```
 scripts/scan_freetaxusa.py     ← one-time runner, saves JSON field manifest
-data/freetaxusa_fields.json    ← field manifest consumed by all agents
+data/freetaxusa_fields.json    ← real FreeTaxUSA fields (scanned 2026-03-01)
 
 FastAPI backend/
-  POST /users                  ← create user + session
-  POST /sessions               ← create chat session
-  POST /chat                   ← conversational data collection (Claude tool-use)
-  POST /upload-pdf             ← parse W-2/1099 PDFs with pdfplumber + Claude
-  GET  /sessions/{id}/status   ← check collected vs required fields
-  POST /submit-taxes           ← trigger browser-use submission agent
-  POST /retry-section          ← retry a single failed section
-  GET  /users/{id}/data        ← review all stored tax data
-  GET  /filing-stream/{user_id}← SSE stream of per-section filing progress events
-  POST /setup-gusto-profile    ← create browser-use cloud profile for Gusto login
-  POST /fetch-gusto-w2         ← fetch W-2 from Gusto via browser automation
+  POST   /users                ← create/find user by email
+  POST   /sessions             ← create chat session
+  POST   /chat                 ← conversational data collection (Claude tool-use)
+  POST   /upload-pdf           ← parse W-2/1099 PDFs with pdfplumber + Claude
+  GET    /sessions/{id}/status ← check collected vs required fields
+  POST   /submit-taxes         ← trigger browser-use submission agent
+  POST   /retry-section        ← retry a single failed section
+  GET    /users/{id}/data      ← return all stored tax data (explicit cols + extra_data)
+  PUT    /users/{id}/data      ← upsert full TaxData payload from frontend
+  DELETE /users/{id}/data      ← wipe all tax records for a user (reset)
+  GET    /filing-stream/{id}   ← SSE stream of per-section filing progress events
+  POST   /gusto-login          ← create browser-use cloud profile for Gusto login
+  POST   /fetch-gusto-w2       ← fetch W-2 from Gusto via browser automation
 
-SQLite (april.db)              ← stores all user data and chat history
+SQLite (april.db)              ← all user data, chat history, and tax records
 ```
 
 ---
@@ -35,7 +37,7 @@ SQLite (april.db)              ← stores all user data and chat history
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app + all routes (9 total)
+│   ├── main.py                  # FastAPI app + all 11 routes
 │   ├── config.py                # Pydantic settings (loads from .env)
 │   ├── queues.py                # Shared asyncio Queues for SSE filing stream
 │   ├── database/
@@ -52,7 +54,7 @@ backend/
 ├── scripts/
 │   └── scan_freetaxusa.py       # one-time scanner (walks FreeTaxUSA with dummy data)
 ├── data/
-│   └── freetaxusa_fields.json   # scanner output (placeholder committed; re-run for real fields)
+│   └── freetaxusa_fields.json   # real field manifest from 2026-03-01 scan
 ├── pyproject.toml
 ├── .env.example
 └── april.db                     # SQLite database (gitignored)
@@ -65,28 +67,38 @@ backend/
 ### 1. Website Scanner (`scripts/scan_freetaxusa.py`)
 - Connects to an already-running Chrome instance via CDP at `http://localhost:9222`
 - Uses a browser-use `Agent` with Claude Sonnet to walk through FreeTaxUSA with dummy data
-- Records every field label, type, section, and required status encountered
-- Outputs `data/freetaxusa_fields.json` — the canonical field manifest
-- Run once; commit the output
+- Records every field label, type, options, section, and required status encountered
+- Outputs `data/freetaxusa_fields.json` — the canonical field manifest (already committed from real scan)
+- Re-run only if FreeTaxUSA changes its form structure
 
 ### 2. SQLite Models (`app/database/models.py`)
-- `users`: email, created_at
-- `chat_sessions`: user_id, status (`collecting`/`complete`), current_section
-- `chat_messages`: session_id, role (`user`/`assistant`), content
-- `tax_returns`: personal info + bank/refund fields
-- `w2_forms`: all W-2 box values per employer
-- `form_1099s`: NEC/INT/DIV/B with raw_json blob for type-specific fields
-- `deductions`: standard/itemized + specific deduction amounts
-- `credits`: child tax credit, education credits, EITC
 
-### 3. PDF Parser (`app/services/pdf_parser.py`)
+All tables include `extra_data JSON` to store the full frontend payload verbatim (keys match frontend TypeScript interfaces). Explicit columns are synced for backend queries; `extra_data` wins on read.
+
+| Table | Explicit Columns | extra_data |
+|---|---|---|
+| `users` | id, email, created_at | — |
+| `chat_sessions` | id, user_id, status, current_section | — |
+| `chat_messages` | id, session_id, role, content | — |
+| `tax_returns` | first_name, last_name, ssn, dob, address, occupation, filing_status, direct_deposit_routing/account | All frontend TaxReturn fields |
+| `w2_forms` | employer_name, ein, wages, federal/ss/medicare/state_withheld, state_wages, local_withheld, box12_code/amount | All 44 W-2 box fields |
+| `form_1099s` | form_type, payer_name, payer_tin, amount, federal_withheld, raw_json | — |
+| `deductions` | type, mortgage_interest, charitable_cash, student_loan_interest, other_json | — |
+| `credits` | child_tax_credit_count, education_credit_type, eitc_qualifying_children, other_json | — |
+
+### 3. Data Sync Flow
+- **Write**: `PUT /users/{id}/data` — upserts TaxReturn (creates if none), replaces W2/1099 list wholesale, upserts Deduction/Credit. Stores full payload in `extra_data`. Also syncs known columns for browser agent compatibility.
+- **Read**: `GET /users/{id}/data` — calls `_row_to_dict()` which merges `{**explicit_cols, **extra_data}` so frontend edits always override chat-agent writes to explicit columns.
+- **Reset**: `DELETE /users/{id}/data` — hard-deletes all tax records; user row and chat session remain intact.
+
+### 4. PDF Parser (`app/services/pdf_parser.py`)
 - Receives PDF bytes via `POST /upload-pdf`
 - Extracts text with `pdfplumber`
 - Sends extracted text to Claude with a structured extraction prompt
 - Returns typed dict mapped to DB columns
 - Persists to the appropriate table (W2Form or Form1099)
 
-### 4. Chat Agent (`app/services/chat_agent.py`)
+### 5. Chat Agent (`app/services/chat_agent.py`)
 - Stateful Claude conversation using the Anthropic SDK (not LangChain)
 - Loads full field manifest and chat history from DB on each turn
 - Uses three Claude tools:
@@ -96,9 +108,9 @@ backend/
 - Runs an agentic loop until Claude stops using tools
 - Returns `{reply, request_pdf_upload, pdf_upload_reason, session_status}`
 
-### 5. Browser Submission Agent (`app/services/browser_agent.py`)
+### 6. Browser Submission Agent (`app/services/browser_agent.py`)
 - Uses browser-use `Agent` + `Browser(cdp_url=...)` connected to Chrome
-- Runs **one agent per section** for reliability
+- Runs one agent per section for reliability
 - Sections: Personal Information → Filing Status → W-2 Income → 1099 Income → Deductions → Credits → Bank/Refund → Review
 - Stops before the final "File" / "Submit" button
 - After each section completes, pushes an event to `app/queues.py` → consumed by SSE endpoint
@@ -112,37 +124,54 @@ backend/
 - Downloaded PDF is passed through the existing `parse_tax_pdf()` pipeline and saved as a W2Form record
 
 ### 7. FastAPI Routes (`app/main.py`)
-- `POST /users` — idempotent user creation by email
-- `POST /sessions` — creates a new chat session
-- `POST /chat` — processes one chat turn, returns reply + optional PDF upload flag
-- `POST /upload-pdf` — multipart form: session_id + PDF file
-- `GET /sessions/{id}/status` — returns missing fields + percent complete
-- `POST /submit-taxes` — triggers browser agent, returns per-section results
-- `POST /retry-section` — retries one named section
-- `GET /users/{id}/data` — returns all stored tax data as JSON
-- `GET /filing-stream/{user_id}` — SSE stream of `section_complete` and `complete` events
-- `POST /setup-gusto-profile` — creates a browser-use cloud profile for Gusto; user authenticates via `live_url`
-- `POST /fetch-gusto-w2` — uses saved profile to fetch W-2 from Gusto, parse it, and save to DB
 
-### 8. SSE Queue (`app/queues.py`)
+| Method | Route | Description |
+|---|---|---|
+| POST | /users | Idempotent user creation by email |
+| POST | /sessions | Creates a new chat session |
+| POST | /chat | Processes one chat turn; returns reply + optional PDF upload flag |
+| POST | /upload-pdf | Multipart: session_id + PDF file; persists extracted fields |
+| GET | /sessions/{id}/status | Returns missing fields + percent_complete |
+| POST | /submit-taxes | Triggers browser agent; returns per-section results |
+| POST | /retry-section | Retries one named section |
+| GET | /users/{id}/data | Returns all stored tax data (extra_data merged) |
+| PUT | /users/{id}/data | Upserts full TaxData from frontend UI edits |
+| DELETE | /users/{id}/data | Wipes all tax records (reset) |
+| GET | /filing-stream/{id} | SSE stream of section_complete and complete events |
+| POST | /gusto-login | Creates browser-use cloud profile for Gusto; user authenticates via live_url |
+| POST | /fetch-gusto-w2 | Uses saved profile to fetch W-2 from Gusto, parse, and save to DB |
+
+### 8. Schemas (`app/schemas/api.py`)
+- `CreateUserRequest`, `UserResponse`
+- `CreateSessionRequest`, `SessionResponse`
+- `ChatRequest`, `ChatResponse`
+- `PDFUploadResponse`
+- `SessionStatusResponse`
+- `SubmitTaxesRequest`, `SubmitTaxesResponse`, `SectionResult`
+- `RetrySectionRequest`
+- `UserDataResponse` — returned by GET and PUT /users/{id}/data
+- `UpdateDataRequest` — body for PUT /users/{id}/data
+- `GustoLoginRequest`, `GustoLoginResponse`, `FetchGustoW2Request`, `FetchGustoW2Response`
+
+### 9. SSE Queue (`app/queues.py`)
 - `filing_queues: dict[int, asyncio.Queue]` — one queue per active filing user
 - `browser_agent.py` pushes events; `main.py` /filing-stream reads them
 - Separated into its own module to avoid circular imports
 
 ---
 
-## SQLite Schema Summary
+## Field Manifest (`data/freetaxusa_fields.json`)
 
-| Table | Key Columns |
-|---|---|
-| `users` | id, email, created_at |
-| `chat_sessions` | id, user_id, status, current_section |
-| `chat_messages` | id, session_id, role, content |
-| `tax_returns` | id, user_id, filing_status, first/last name, ssn, dob, address, occupation, routing, account |
-| `w2_forms` | id, user_id, employer_name, ein, wages, federal/ss/medicare/state_withheld, box12 |
-| `form_1099s` | id, user_id, form_type, payer_name, payer_tin, amount, federal_withheld, raw_json |
-| `deductions` | id, user_id, type, mortgage_interest, charitable_cash, student_loan_interest, other_json |
-| `credits` | id, user_id, child_tax_credit_count, education_credit_type, eitc_qualifying_children, other_json |
+Real fields scanned from FreeTaxUSA on 2026-03-01. Key sections:
+
+| Section | Pages | Key fields |
+|---|---|---|
+| Personal Information | 1, 3–6 | First/middle/last name, suffix, address (apt, city, state, zip, zip+4), SSN, DOB, occupation, addr_changed, blind, deceased, nonresident_alien, claimed_as_dependent, presidential_fund, identity_protection_pin |
+| Filing Status | 2 | filing_status (Single / MFJ / MFS / HoH / Qualifying Surviving Spouse) |
+| Income (W-2) | 7–10 | All 44 boxes: EIN, employer/employee name+address+state+zip, boxes 1–20, box 12 codes A–HH, box 13 checkboxes, w2_type, is_corrected, has_tip_income, has_overtime |
+| Income (other) | 11–13 | Cryptocurrency, investments, unemployment, SS benefits, retirement, etc. |
+
+State lists include all 50 states + DC, GU, PR, VI, AA, AE, AP (military/territory codes) to match FreeTaxUSA exactly.
 
 ---
 
@@ -174,19 +203,7 @@ cp .env.example .env
 # Fill in ANTHROPIC_API_KEY in .env
 ```
 
-### Step 1 — Run the scanner (one-time)
-```bash
-# Open Chrome with remote debugging:
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-april
-
-# Navigate Chrome to freetaxusa.com and start/log in to a return, then:
-cd backend
-python scripts/scan_freetaxusa.py
-# → writes data/freetaxusa_fields.json
-```
-
-### Step 2 — Start the server
+### Step 1 — Start the server
 ```bash
 cd backend
 uvicorn app.main:app --reload
@@ -194,24 +211,18 @@ uvicorn app.main:app --reload
 # API docs: http://localhost:8000/docs
 ```
 
-### Step 3 — Chat flow (curl example)
+### Step 2 — Scanner (only if FreeTaxUSA changes)
 ```bash
-curl -X POST http://localhost:8000/users \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com"}'
+# Open Chrome with remote debugging:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-april
 
-curl -X POST http://localhost:8000/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1}'
-
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"session_id": 1, "message": "I have a W-2 from Google"}'
-
-curl http://localhost:8000/sessions/1/status
+# Navigate Chrome to freetaxusa.com, log in, then:
+python scripts/scan_freetaxusa.py
+# → overwrites data/freetaxusa_fields.json
 ```
 
-### Step 4 — Submit (Chrome must be open at FreeTaxUSA)
+### Step 3 — Submit (Chrome must be open at FreeTaxUSA)
 ```bash
 curl -X POST http://localhost:8000/submit-taxes \
   -H "Content-Type: application/json" \

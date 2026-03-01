@@ -17,6 +17,7 @@ from app.schemas.api import (
     SubmitTaxesRequest, SubmitTaxesResponse, SectionResult,
     RetrySectionRequest,
     UserDataResponse,
+    UpdateDataRequest,
     GustoLoginRequest, GustoLoginResponse,
     FetchGustoW2Request, FetchGustoW2Response,
 )
@@ -200,20 +201,25 @@ async def retry_section(body: RetrySectionRequest, db: Session = Depends(get_db)
     return SectionResult(**result)
 
 
+# Shared helper: merge explicit columns with extra_data (extra_data wins)
+def _row_to_dict(obj):
+    if obj is None:
+        return None
+    base = {
+        c.name: getattr(obj, c.name)
+        for c in obj.__table__.columns
+        if c.name not in ('extra_data', 'created_at', 'updated_at', 'user_id')
+    }
+    extra = getattr(obj, 'extra_data', None) or {}
+    return {**base, **extra}
+
+
 # ── GET /users/{user_id}/data ──────────────────────────────────────────────
 @app.get("/users/{user_id}/data", response_model=UserDataResponse)
 def get_user_data(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
-    def row_to_dict(obj):
-        if obj is None:
-            return None
-        return {
-            c.name: getattr(obj, c.name)
-            for c in obj.__table__.columns
-        }
 
     tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
     w2s = db.query(W2Form).filter_by(user_id=user_id).all()
@@ -224,11 +230,11 @@ def get_user_data(user_id: int, db: Session = Depends(get_db)):
     return UserDataResponse(
         user_id=user.id,
         email=user.email,
-        tax_return=row_to_dict(tr),
-        w2_forms=[row_to_dict(w) for w in w2s],
-        form_1099s=[row_to_dict(f) for f in f1099s],
-        deductions=row_to_dict(ded),
-        credits=row_to_dict(cred),
+        tax_return=_row_to_dict(tr),
+        w2_forms=[_row_to_dict(w) for w in w2s],
+        form_1099s=[_row_to_dict(f) for f in f1099s],
+        deductions=_row_to_dict(ded),
+        credits=_row_to_dict(cred),
     )
 
 
@@ -293,3 +299,124 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
         saved=True,
         w2_id=w2.id,
     )
+
+
+# ── PUT /users/{user_id}/data ──────────────────────────────────────────────
+@app.put("/users/{user_id}/data", response_model=UserDataResponse)
+def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Upsert TaxReturn
+    if body.tax_return is not None:
+        tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
+        if tr is None:
+            tr = TaxReturn(user_id=user_id)
+            db.add(tr)
+        # Sync known explicit columns (backend field name mappings)
+        col_map = {
+            'first_name': 'first_name',
+            'last_name': 'last_name',
+            'ssn': 'ssn',
+            'date_of_birth': 'dob',
+            'address': 'address',
+            'occupation': 'occupation',
+            'filing_status': 'filing_status',
+            'bank_routing_number': 'direct_deposit_routing',
+            'bank_account_number': 'direct_deposit_account',
+        }
+        for fe_key, db_key in col_map.items():
+            val = body.tax_return.get(fe_key)
+            if val is not None:
+                setattr(tr, db_key, val)
+        tr.extra_data = body.tax_return
+
+    # Replace W2 forms wholesale
+    if body.w2_forms is not None:
+        db.query(W2Form).filter_by(user_id=user_id).delete()
+        for w2_data in body.w2_forms:
+            w2 = W2Form(user_id=user_id)
+            w2_col_map = {
+                'employer_name': 'employer_name',
+                'ein': 'ein',
+                'wages': 'wages',
+                'federal_tax_withheld': 'federal_withheld',
+                'state_tax_withheld': 'state_withheld',
+                'social_security_tax_withheld': 'ss_withheld',
+                'medicare_tax_withheld': 'medicare_withheld',
+                'state_wages': 'state_wages',
+                'local_tax': 'local_withheld',
+                'box12_code1': 'box12_code',
+                'box12_amount1': 'box12_amount',
+            }
+            for fe_key, db_key in w2_col_map.items():
+                val = w2_data.get(fe_key)
+                if val is not None:
+                    setattr(w2, db_key, val)
+            w2.extra_data = w2_data
+            db.add(w2)
+
+    # Replace 1099 forms wholesale
+    if body.form_1099s is not None:
+        db.query(Form1099).filter_by(user_id=user_id).delete()
+        for f_data in body.form_1099s:
+            f1099 = Form1099(
+                user_id=user_id,
+                form_type=f_data.get('form_type', 'unknown'),
+                raw_json=f_data,
+            )
+            for k in ('payer_name', 'amount'):
+                if f_data.get(k) is not None:
+                    setattr(f1099, k, f_data[k])
+            db.add(f1099)
+
+    # Upsert Deduction
+    if body.deductions is not None:
+        ded = db.query(Deduction).filter_by(user_id=user_id).first()
+        if ded is None:
+            ded = Deduction(user_id=user_id)
+            db.add(ded)
+        ded.other_json = body.deductions
+
+    # Upsert Credit
+    if body.credits is not None:
+        cred = db.query(Credit).filter_by(user_id=user_id).first()
+        if cred is None:
+            cred = Credit(user_id=user_id)
+            db.add(cred)
+        cred.other_json = body.credits
+
+    db.commit()
+
+    # Return the full saved state
+    tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
+    w2s = db.query(W2Form).filter_by(user_id=user_id).all()
+    f1099s = db.query(Form1099).filter_by(user_id=user_id).all()
+    ded = db.query(Deduction).filter_by(user_id=user_id).first()
+    cred = db.query(Credit).filter_by(user_id=user_id).first()
+
+    return UserDataResponse(
+        user_id=user.id,
+        email=user.email,
+        tax_return=_row_to_dict(tr),
+        w2_forms=[_row_to_dict(w) for w in w2s],
+        form_1099s=[_row_to_dict(f) for f in f1099s],
+        deductions=_row_to_dict(ded),
+        credits=_row_to_dict(cred),
+    )
+
+
+# ── DELETE /users/{user_id}/data ───────────────────────────────────────────
+@app.delete("/users/{user_id}/data")
+def reset_user_data(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.query(TaxReturn).filter_by(user_id=user_id).delete()
+    db.query(W2Form).filter_by(user_id=user_id).delete()
+    db.query(Form1099).filter_by(user_id=user_id).delete()
+    db.query(Deduction).filter_by(user_id=user_id).delete()
+    db.query(Credit).filter_by(user_id=user_id).delete()
+    db.commit()
+    return {"success": True}

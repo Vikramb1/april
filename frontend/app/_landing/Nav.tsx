@@ -26,7 +26,7 @@ export function Nav({ scrollY }: { scrollY: number }) {
     }}>
       {/* Logo */}
       <Link href="/" style={{ display: "flex", alignItems: "center", flexShrink: 0, textDecoration: "none" }}>
-        <Image src="/april-logo-no-bg.png" alt="April" width={72} height={24} priority style={{ objectFit: "contain", height: 22, width: "auto" }}/>
+        <Image src="/april-logo-no-bg.png" alt="April" width={90} height={30} priority style={{ objectFit: "contain", height: 28, width: "auto" }}/>
       </Link>
 
       {/* Nav links */}
@@ -54,7 +54,7 @@ export function Nav({ scrollY }: { scrollY: number }) {
             cursor: "pointer", transition: `background 150ms`,
             fontFamily: "var(--font-jakarta)",
           }}
-        >File for free →</button>
+        >File now →</button>
       </Link>
     </nav>
   );

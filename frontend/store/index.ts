@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Phase, ChatMessage, TaxData, FilingEvent, FilingLogEntry, SectionResult } from '@/lib/types'
+import { api } from '@/lib/api'
 
 interface AppState {
   // Auth / session
@@ -37,16 +38,20 @@ interface AppState {
   setPendingPdfUpload: (active: boolean, reason?: string) => void
   setIsTyping: (typing: boolean) => void
   setTaxData: (data: TaxData) => void
+  hydrateTaxData: (data: TaxData) => void
   setPercentComplete: (pct: number) => void
   setMissingFields: (fields: string[]) => void
   addFilingEvent: (event: FilingEvent) => void
   resetFiling: () => void
   logout: () => void
+  resetTaxData: () => void
+  clearMessages: () => void
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 }
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       userId: null,
       sessionId: null,
       userEmail: '',
@@ -66,6 +71,8 @@ export const useStore = create<AppState>()(
       filingProgress: [],
       filingLog: [],
 
+      saveStatus: 'idle' as const,
+
       setUser: (id, email) => set({ userId: id, userEmail: email }),
       setSession: (id) => set({ sessionId: id }),
       setPhase: (phase) => set({ phase }),
@@ -82,7 +89,24 @@ export const useStore = create<AppState>()(
         set({ pendingPdfUpload: { active, reason } }),
 
       setIsTyping: (typing) => set({ isTyping: typing }),
-      setTaxData: (data) => set({ taxData: data }),
+      setTaxData: (data) => {
+        set({ taxData: data, saveStatus: 'saving' })
+        const { userId } = get()
+        if (userId) {
+          api.updateData(userId, data as Record<string, unknown>)
+            .then(() => {
+              set({ saveStatus: 'saved' })
+              setTimeout(() => set({ saveStatus: 'idle' }), 2000)
+            })
+            .catch(() => {
+              set({ saveStatus: 'error' })
+              setTimeout(() => set({ saveStatus: 'idle' }), 3000)
+            })
+        } else {
+          set({ saveStatus: 'idle' })
+        }
+      },
+      hydrateTaxData: (data) => set({ taxData: data }),
       setPercentComplete: (pct) => set({ percentComplete: pct }),
       setMissingFields: (fields) => set({ missingFields: fields }),
 
@@ -133,6 +157,17 @@ export const useStore = create<AppState>()(
       },
 
       resetFiling: () => set({ filingProgress: [], filingLog: [] }),
+
+      clearMessages: () => set({ messages: [] }),
+
+      resetTaxData: () => set({
+        taxData: null,
+        percentComplete: 0,
+        missingFields: [],
+        phase: 'collecting',
+        filingProgress: [],
+        filingLog: [],
+      }),
 
       logout: () =>
         set({

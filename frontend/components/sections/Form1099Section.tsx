@@ -20,7 +20,7 @@ interface FormCardProps {
 
 function FormCard({ form, onRemove }: FormCardProps) {
   return (
-    <div className="bg-white border border-hairline rounded-xl p-5 mb-3">
+    <div className="bg-cream-deep border border-hairline rounded-xl p-5 mb-3">
       <div className="flex items-baseline justify-between mb-3">
         <div className="flex items-baseline gap-2">
           <span className="text-[16px] font-bold text-ink">
@@ -30,7 +30,7 @@ function FormCard({ form, onRemove }: FormCardProps) {
             1099-{(form.form_type as string) ?? '?'}
           </span>
         </div>
-        <button onClick={onRemove} className="text-[12px] text-muted hover:text-red transition-colors">
+        <button onClick={onRemove} className="text-[12px] text-muted hover:text-red transition-colors cursor-pointer">
           Remove
         </button>
       </div>
@@ -113,7 +113,7 @@ export function Form1099Section() {
       ))}
 
       {showForm && (
-        <div className="bg-white border border-green rounded-xl p-5 mb-3">
+        <div className="bg-cream-deep border border-green rounded-xl p-5 mb-3">
           <p className="text-[14px] font-semibold text-ink mb-4">New 1099</p>
 
           {/* Form type selector */}
@@ -179,13 +179,13 @@ export function Form1099Section() {
             <button
               onClick={handleAdd}
               disabled={!form.payer_name.trim()}
-              className="bg-green text-white text-[13px] font-semibold px-5 py-2 rounded-lg hover:bg-green-mid transition-colors disabled:opacity-40"
+              className="bg-green text-white text-[13px] font-semibold px-5 py-2 rounded-lg hover:bg-green-mid transition-colors disabled:opacity-40 cursor-pointer"
             >
               Add 1099
             </button>
             <button
               onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
-              className="text-[13px] text-muted hover:text-ink transition-colors"
+              className="text-[13px] text-muted hover:text-ink transition-colors cursor-pointer"
             >
               Cancel
             </button>

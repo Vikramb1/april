@@ -37,13 +37,15 @@ interface ReviewSectionProps {
 }
 
 export function ReviewSection({ frozenYear }: ReviewSectionProps) {
-  const { taxData: liveTaxData, userId, setPhase, resetFiling, addMessage } = useStore(
+  const { taxData: liveTaxData, userId, setPhase, resetFiling, addMessage, missingFields, percentComplete } = useStore(
     useShallow((s) => ({
       taxData: s.taxData,
       userId: s.userId,
       setPhase: s.setPhase,
       resetFiling: s.resetFiling,
       addMessage: s.addMessage,
+      missingFields: s.missingFields,
+      percentComplete: s.percentComplete,
     }))
   )
 
@@ -102,14 +104,36 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
         </tbody>
       </table>
 
-      {!frozenYear && (
-        <button
-          onClick={handleFile}
-          className="w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors"
-        >
-          File My Return →
-        </button>
-      )}
+      {!frozenYear && (() => {
+        // Derive incomplete section names from missing fields
+        const incompleteSections = percentComplete > 0
+          ? [...new Set(missingFields.map((f) => f.split('.')[0]))]
+          : []
+        const canFile = incompleteSections.length === 0
+
+        return (
+          <div>
+            {!canFile && (
+              <div className="mb-4 p-3 bg-amber-pale border border-amber rounded-xl">
+                <p className="text-[13px] font-semibold text-amber mb-1">Cannot file yet</p>
+                <p className="text-[12px] text-ink mb-1">The following sections are incomplete:</p>
+                <ul className="list-disc list-inside">
+                  {incompleteSections.map((s) => (
+                    <li key={s} className="text-[12px] text-ink">{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button
+              onClick={handleFile}
+              disabled={!canFile}
+              className="w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              File My Return →
+            </button>
+          </div>
+        )
+      })()}
     </div>
   )
 }

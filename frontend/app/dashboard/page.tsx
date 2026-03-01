@@ -24,6 +24,7 @@ function PastYearPanel({ year }: { year: string }) {
 // Middle panel for current year — section content only, no pills
 function CurrentYearPanel() {
   const phase = useStore((s) => s.phase)
+  const saveStatus = useStore((s) => s.saveStatus)
 
   if (phase === 'filing' || phase === 'filed') {
     return <FilingView />
@@ -46,7 +47,14 @@ function CurrentYearPanel() {
 
   // Collecting phase — just section content, sidebar handles navigation
   return (
-    <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
+    <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6 relative">
+      {saveStatus !== 'idle' && (
+        <div className="absolute top-4 right-4 text-[11px] font-medium pointer-events-none">
+          {saveStatus === 'saving' && <span className="text-muted shimmer">Saving…</span>}
+          {saveStatus === 'saved' && <span className="text-green">✓ Saved</span>}
+          {saveStatus === 'error' && <span className="text-red">Save failed — backend offline?</span>}
+        </div>
+      )}
       <SectionContent />
     </div>
   )
@@ -75,6 +83,7 @@ export default function Dashboard() {
     addMessage,
     setPercentComplete,
     setMissingFields,
+    hydrateTaxData,
   } = useStore(
     useShallow((s) => ({
       userId: s.userId,
@@ -85,6 +94,7 @@ export default function Dashboard() {
       addMessage: s.addMessage,
       setPercentComplete: s.setPercentComplete,
       setMissingFields: s.setMissingFields,
+      hydrateTaxData: s.hydrateTaxData,
     }))
   )
 
@@ -110,9 +120,23 @@ export default function Dashboard() {
           setSession(sid)
         }
 
-        const status = await api.sessionStatus(sid!)
+        const [status, dbData] = await Promise.all([
+          api.sessionStatus(sid!),
+          api.userData(uid!),
+        ])
         setPercentComplete(status.percent_complete)
         setMissingFields(status.missing_fields)
+
+        // Hydrate store from DB (extra_data wins in the API response)
+        if (dbData.tax_return || dbData.w2_forms.length > 0) {
+          hydrateTaxData({
+            tax_return: dbData.tax_return as import('@/lib/types').TaxReturn,
+            w2_forms: dbData.w2_forms as import('@/lib/types').W2Form[],
+            form_1099s: dbData.form_1099s as import('@/lib/types').Form1099[],
+            deductions: dbData.deductions as import('@/lib/types').Deductions ?? undefined,
+            credits: dbData.credits as import('@/lib/types').Credits ?? undefined,
+          })
+        }
 
         // Use live state (not stale closure) to avoid React StrictMode double-add
         const hasGreeting = useStore.getState().messages.some((m) => m.role === 'assistant')

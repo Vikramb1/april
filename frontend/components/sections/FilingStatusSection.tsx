@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { clsx } from 'clsx'
 import { useStore } from '@/store'
 
-const STATUSES = ['Single', 'Married Filing Jointly', 'Married Filing Separately', 'Head of Household']
+const STATUSES = ['Single', 'Married Filing Jointly', 'Married Filing Separately', 'Head of Household', 'Qualifying Surviving Spouse']
 
 interface Dependent {
   name: string
@@ -82,6 +82,8 @@ export function FilingStatusSection() {
   const setTaxData = useStore((s) => s.setTaxData)
 
   const [selected, setSelected] = useState(taxData?.tax_return?.filing_status ?? 'Single')
+  const [identityPin, setIdentityPin] = useState(taxData?.tax_return?.identity_protection_pin ?? '')
+  const [identityPinNumber, setIdentityPinNumber] = useState(taxData?.tax_return?.identity_protection_pin_number ?? '')
   const [dependents, setDependents] = useState<Dependent[]>([])
 
   function updateDep(index: number, dep: Dependent) {
@@ -101,6 +103,28 @@ export function FilingStatusSection() {
     setTaxData({
       ...taxData,
       tax_return: { ...taxData?.tax_return, filing_status: status },
+    } as Parameters<typeof setTaxData>[0])
+  }
+
+  function handlePinChange(val: string) {
+    setIdentityPin(val)
+    const pinNumber = val === 'No' ? '' : identityPinNumber
+    if (val === 'No') setIdentityPinNumber('')
+    setTaxData({
+      ...taxData,
+      tax_return: {
+        ...taxData?.tax_return,
+        identity_protection_pin: val,
+        identity_protection_pin_number: pinNumber || undefined,
+      },
+    } as Parameters<typeof setTaxData>[0])
+  }
+
+  function handlePinNumberChange(val: string) {
+    setIdentityPinNumber(val)
+    setTaxData({
+      ...taxData,
+      tax_return: { ...taxData?.tax_return, identity_protection_pin_number: val },
     } as Parameters<typeof setTaxData>[0])
   }
 
@@ -124,6 +148,41 @@ export function FilingStatusSection() {
             {s}
           </button>
         ))}
+      </div>
+
+      {/* Identity Protection PIN */}
+      <div className="mb-6">
+        <h3 className="text-[14px] font-semibold text-ink mb-2">Identity Protection PIN</h3>
+        <p className="text-[12px] text-muted mb-3">Did the IRS issue you an Identity Protection PIN?</p>
+        <div className="flex gap-2">
+          {['Yes', 'No'].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => handlePinChange(opt)}
+              className={clsx(
+                'rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors border cursor-pointer',
+                identityPin === opt
+                  ? 'bg-green text-white border-green'
+                  : 'border-hairline text-muted hover:border-green hover:text-ink'
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        {identityPin === 'Yes' && (
+          <div className="mt-3 p-3 bg-cream rounded-lg border border-hairline">
+            <p className="text-[12px] text-muted mb-1">Enter your 6-digit Identity Protection PIN</p>
+            <input
+              value={identityPinNumber}
+              onChange={(e) => handlePinNumberChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength={6}
+              className="font-mono text-[16px] text-ink bg-transparent outline-none border-b-2 border-green w-24 py-1 tracking-widest"
+            />
+          </div>
+        )}
       </div>
 
       {/* Dependents */}

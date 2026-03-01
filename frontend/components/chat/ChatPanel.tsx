@@ -18,26 +18,32 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     isTyping,
     pendingPdfUpload,
     sessionId,
+    userId,
     addMessage,
     setIsTyping,
     setPendingPdfUpload,
     setPercentComplete,
     setMissingFields,
     setPhase,
+    hydrateTaxData,
     phase,
+    clearMessages,
   } = useStore(
     useShallow((s) => ({
       messages: s.messages,
       isTyping: s.isTyping,
       pendingPdfUpload: s.pendingPdfUpload,
       sessionId: s.sessionId,
+      userId: s.userId,
       addMessage: s.addMessage,
       setIsTyping: s.setIsTyping,
       setPendingPdfUpload: s.setPendingPdfUpload,
       setPercentComplete: s.setPercentComplete,
       setMissingFields: s.setMissingFields,
       setPhase: s.setPhase,
+      hydrateTaxData: s.hydrateTaxData,
       phase: s.phase,
+      clearMessages: s.clearMessages,
     }))
   )
 
@@ -75,10 +81,23 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
         setPendingPdfUpload(true, res.pdf_upload_reason)
       }
 
-      // Refresh session status to update sidebar progress
-      const status = await api.sessionStatus(sessionId)
+      // Refresh session status + latest data from DB
+      const [status, dbData] = await Promise.all([
+        api.sessionStatus(sessionId),
+        userId ? api.userData(userId) : Promise.resolve(null),
+      ])
       setPercentComplete(status.percent_complete)
       setMissingFields(status.missing_fields)
+
+      if (dbData && (dbData.tax_return || dbData.w2_forms.length > 0)) {
+        hydrateTaxData({
+          tax_return: dbData.tax_return as import('@/lib/types').TaxReturn,
+          w2_forms: dbData.w2_forms as import('@/lib/types').W2Form[],
+          form_1099s: dbData.form_1099s as import('@/lib/types').Form1099[],
+          deductions: dbData.deductions as import('@/lib/types').Deductions ?? undefined,
+          credits: dbData.credits as import('@/lib/types').Credits ?? undefined,
+        })
+      }
 
       if (status.percent_complete === 100 && phase === 'collecting') {
         setPhase('reviewing')
@@ -102,6 +121,15 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       <div className="px-4 py-3 border-b border-hairline flex items-center gap-2 flex-shrink-0">
         <span className="text-base font-bold text-ink">April</span>
         <span className={`w-2 h-2 rounded-full ${backendDown ? 'bg-[#E5E7EB]' : 'bg-green pulse-dot'}`} />
+        {messages.length > 0 && (
+          <button
+            onClick={clearMessages}
+            className="ml-auto text-[11px] text-muted hover:text-red transition-colors cursor-pointer"
+            title="Clear chat"
+          >
+            Clear chat
+          </button>
+        )}
       </div>
 
       {/* Messages */}

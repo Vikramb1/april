@@ -83,6 +83,15 @@ class UserDataResponse(BaseModel):
     credits: Optional[dict[str, Any]] = None
 
 
+# ── Update Data ────────────────────────────────────────────────────────────
+class UpdateDataRequest(BaseModel):
+    tax_return: Optional[dict[str, Any]] = None
+    w2_forms: Optional[list[dict[str, Any]]] = None
+    form_1099s: Optional[list[dict[str, Any]]] = None
+    deductions: Optional[dict[str, Any]] = None
+    credits: Optional[dict[str, Any]] = None
+
+
 # ── Gusto W-2 Fetch ──────────────────────────────────────────────────
 class GustoLoginRequest(BaseModel):
     user_id: int

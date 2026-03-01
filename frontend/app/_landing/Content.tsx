@@ -618,31 +618,71 @@ export function Accuracy() {
 }
 
 // ─── Testimonials ─────────────────────────────────────────────────────────────
+const QUOTES = [
+  { q: "I watched April log into Schwab and pull my 1099s. I actually said 'whoa' out loud.", by: "Michael Torres", meta: "filed in 8 minutes" },
+  { q: "Finally understood what a Schedule D was because April explained it while it filed.", by: "Sarah Chen", meta: "W-2 + investments" },
+  { q: "Caught a 1099 I'd completely forgotten about. Found it in my Coinbase account.", by: "Raj Patel", meta: "crypto + stocks" },
+  { q: "The terminal log showing every click April makes is somehow the most reassuring thing I've ever seen in software.", by: "David Kim", meta: "RSU + 1099-NEC" },
+  { q: "Set it up on a Saturday morning. By the time my coffee was done, my return was filed.", by: "Priya Nair", meta: "filed in 11 minutes" },
+];
+
 export function Testimonials() {
   const { ref, inView } = useInView();
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(p => (p + 1) % QUOTES.length), 4800);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <section ref={ref} style={{ background: "#F5F0E8", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+    <section ref={ref} style={{ background: "#F5F0E8", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)", textAlign: "center" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <SectionLabel>What People Say</SectionLabel>
-        <blockquote style={{ ...enter(inView), fontFamily: "var(--font-jakarta)", fontWeight: 400, fontSize: "clamp(24px,3.5vw,44px)", lineHeight: 1.25, color: "#0D0D0D", margin: "0 0 12px" }}>
-          &ldquo;I watched April log into Schwab and pull my 1099s. I actually said &lsquo;whoa&rsquo; out loud.&rdquo;
-        </blockquote>
-        <p style={{ ...enter(inView, 80), fontFamily: "var(--font-jakarta)", fontSize: 13, color: "#6B7280", marginBottom: 56 }}>— Michael Torres, filed in 8 minutes</p>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "clamp(32px,5vw,60px)", marginBottom: 48 }}>
-          {[
-            { q: '"Finally understood what a Schedule D was because April explained it while it filed."', by: "— Sarah Chen" },
-            { q: '"Caught a 1099 I\'d completely forgotten about. Found it in my Coinbase account."', by: "— Raj Patel" },
-          ].map(({ q, by }, i) => (
-            <div key={i} style={{ ...enter(inView, 120 + i * 80) }}>
-              <blockquote style={{ fontFamily: "var(--font-jakarta)", fontSize: "clamp(16px,2vw,24px)", lineHeight: 1.4, color: "#0D0D0D", margin: "0 0 10px" }}>{q}</blockquote>
-              <p style={{ fontFamily: "var(--font-jakarta)", fontSize: 13, color: "#6B7280", margin: 0 }}>{by}</p>
+
+        {/* Big opening quote */}
+        <div style={{
+          ...enter(inView),
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontSize: "clamp(80px,14vw,160px)", lineHeight: 0.7,
+          color: "#1B4332", opacity: 0.13, userSelect: "none",
+          marginBottom: "clamp(12px,2vw,24px)",
+        }}>&ldquo;</div>
+
+        {/* Quote carousel */}
+        <div style={{ ...enter(inView, 60), position: "relative", height: "clamp(180px,22vw,240px)", marginBottom: 40 }}>
+          {QUOTES.map(({ q, by, meta }, i) => (
+            <div key={i} style={{
+              position: "absolute", top: 0, left: 0, right: 0,
+              opacity: idx === i ? 1 : 0,
+              transform: idx === i ? "translateY(0)" : "translateY(14px)",
+              transition: `opacity 550ms ${EASE}, transform 550ms ${EASE}`,
+              pointerEvents: idx === i ? "auto" : "none",
+            }}>
+              <blockquote style={{
+                fontFamily: "var(--font-jakarta)", fontWeight: 500,
+                fontSize: "clamp(18px,2.2vw,28px)", lineHeight: 1.45,
+                color: "#0D0D0D", margin: "0 0 20px",
+              }}>{q}</blockquote>
+              <p style={{ fontFamily: "var(--font-jakarta)", fontSize: 14, color: "#6B7280", margin: 0 }}>
+                — {by}
+                <span style={{ fontFamily: "var(--font-jetbrains)", fontSize: 11, color: "#9CA3AF", marginLeft: 8 }}>{meta}</span>
+              </p>
             </div>
           ))}
         </div>
-        <p style={{ ...enter(inView, 300), fontFamily: "var(--font-jakarta)", fontSize: "clamp(16px,1.8vw,20px)", lineHeight: "30px", color: "#6B7280", textAlign: "center", maxWidth: 600, margin: "0 auto" }}>
-          &ldquo;The terminal log showing every click April makes is somehow the most reassuring thing I&rsquo;ve ever seen in software.&rdquo;
-          <span style={{ fontSize: 12, display: "block", marginTop: 8 }}>— David Kim</span>
-        </p>
+
+        {/* Progress dots */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 7 }}>
+          {QUOTES.map((_, i) => (
+            <div key={i} onClick={() => setIdx(i)} style={{
+              width: idx === i ? 24 : 8, height: 8, borderRadius: 4,
+              background: idx === i ? "#1B4332" : "#C8C0B5",
+              cursor: "pointer",
+              transition: `width 300ms ${EASE}, background 300ms`,
+            }}/>
+          ))}
+        </div>
       </div>
     </section>
   );

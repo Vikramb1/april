@@ -11,31 +11,25 @@ function formatMoney(val: number | undefined) {
 interface FieldRowProps {
   label: string
   value: number | undefined
+  placeholder?: string
 }
 
-function FieldRow({ label, value }: FieldRowProps) {
+function FieldRow({ label, value, placeholder = '0.00' }: FieldRowProps) {
   const [editing, setEditing] = useState(false)
   const [localVal, setLocalVal] = useState(String(value ?? ''))
 
   return (
     <div className="border-b border-hairline py-3">
       <p className="text-[12px] text-muted mb-0.5">{label}</p>
-      {editing ? (
-        <input
-          autoFocus
-          value={localVal}
-          onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => setEditing(false)}
-          className="text-[14px] font-mono border-b-2 border-green outline-none bg-transparent w-full"
-        />
-      ) : (
-        <p
-          className="font-mono text-[14px] text-ink cursor-pointer hover:text-green transition-colors"
-          onClick={() => setEditing(true)}
-        >
-          {localVal ? formatMoney(parseFloat(localVal)) : '—'}
-        </p>
-      )}
+      <input
+        readOnly={!editing}
+        value={editing ? localVal : (localVal ? formatMoney(parseFloat(localVal)) : '')}
+        placeholder={placeholder}
+        onChange={(e) => setLocalVal(e.target.value)}
+        onFocus={() => setEditing(true)}
+        onBlur={() => setEditing(false)}
+        className={`font-mono text-[14px] border-b-2 outline-none bg-transparent w-full transition-colors ${editing ? 'border-green text-ink' : 'border-transparent cursor-pointer hover:text-green'} ${!editing && !localVal ? 'text-muted' : 'text-ink'}`}
+      />
     </div>
   )
 }

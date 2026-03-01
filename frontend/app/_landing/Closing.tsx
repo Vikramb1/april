@@ -9,13 +9,13 @@ export function Pricing() {
   const { ref, inView } = useInView();
   const tiers = [
     {
-      name: "Simple", price: "$49",
-      items: ["Federal + state return", "W-2 income", "Auto document collection", "One-click filing"],
+      name: "Complete", price: "$99",
+      items: ["Everything in Simple", "+ Investment income", "+ Crypto & NFTs", "+ Freelance / 1099-NEC", "+ RSU & stock options", "+ Deduction optimization"],
       highlight: false,
     },
     {
-      name: "Complete", price: "$99",
-      items: ["Everything in Simple", "+ Investment income", "+ Crypto & NFTs", "+ Freelance / 1099-NEC", "+ RSU & stock options", "+ Deduction optimization"],
+      name: "Simple", price: "$49",
+      items: ["Federal + state return", "W-2 income", "Auto document collection", "One-click filing"],
       highlight: true,
     },
     {
@@ -145,7 +145,7 @@ const SECURITY_CARDS = [
 export function Security() {
   const { ref, inView } = useInView();
   return (
-    <section ref={ref} style={{ background: "#F5F0E8", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)" }}>
+    <section ref={ref} style={{ background: "#fff", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <SectionLabel>Security</SectionLabel>
         <h2 style={{ ...enter(inView), fontFamily: "var(--font-jakarta)", fontWeight: 700, fontSize: "clamp(24px,3vw,38px)", lineHeight: 1.2, color: "#0D0D0D", marginBottom: 48 }}>
@@ -155,8 +155,8 @@ export function Security() {
           {SECURITY_CARDS.map(({ icon, heading, body }, i) => (
             <div key={heading} style={{
               ...enter(inView, i * 60),
-              background: "#fff", borderRadius: 12,
-              border: "1px solid #E5E7EB", padding: "clamp(16px,2vw,24px)",
+              background: "#FAF7F2", borderRadius: 12,
+              border: "1px solid #E5DDD0", padding: "clamp(16px,2vw,24px)",
             }}>
               <div style={{ width: 40, height: 40, background: "#EAF4EC", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
                 {icon}
@@ -273,18 +273,18 @@ export function FinalCTA() {
 export function Footer() {
   const { ref, inView } = useInView();
   return (
-    <footer ref={ref} style={{ ...enter(inView), background: "#0D0D0D", padding: "40px clamp(20px,5vw,60px) 32px" }}>
+    <footer ref={ref} style={{ ...enter(inView), background: "#F5F0E8", borderTop: "1px solid #E5DDD0", padding: "40px clamp(20px,5vw,60px) 32px" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
-        <Image src="/april-logo-no-bg.png" alt="April" width={72} height={24} style={{ objectFit: "contain", height: 20, width: "auto", filter: "brightness(0) invert(1) opacity(0.6)" }}/>
+        <Image src="/april-logo-no-bg.png" alt="April" width={80} height={28} style={{ objectFit: "contain", height: 22, width: "auto" }}/>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {[["How it Works","#how-it-works"],["Pricing","#pricing"],["FAQ","#faq"]].map(([label, href]) => (
-            <a key={href} href={href} style={{ fontSize: 13, color: "#4B5563", fontFamily: "var(--font-jakarta)", textDecoration: "none" }}
-              onMouseEnter={e => (e.currentTarget.style.color="#9CA3AF")}
-              onMouseLeave={e => (e.currentTarget.style.color="#4B5563")}
+            <a key={href} href={href} style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-jakarta)", textDecoration: "none" }}
+              onMouseEnter={e => (e.currentTarget.style.color="#0D0D0D")}
+              onMouseLeave={e => (e.currentTarget.style.color="#9CA3AF")}
             >{label}</a>
           ))}
         </div>
-        <p style={{ fontSize: 12, color: "#4B5563", fontFamily: "var(--font-jakarta)", margin: 0 }}>
+        <p style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "var(--font-jakarta)", margin: 0 }}>
           © 2026 April. Built in San Francisco.
         </p>
       </div>

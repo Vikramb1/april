@@ -1,62 +1,72 @@
-'use client'
+"use client";
 
-import { clsx } from 'clsx'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore } from '@/store'
-import { ProgressRing } from '@/components/ui/ProgressRing'
-import { TAX_SECTIONS } from '@/lib/types'
-import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from '@/lib/dummyData'
+import { useState } from "react";
+import { clsx } from "clsx";
+import { useShallow } from "zustand/react/shallow";
+import { useStore } from "@/store";
+import { api } from "@/lib/api";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { TAX_SECTIONS } from "@/lib/types";
+import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from "@/lib/dummyData";
 
-// A section is complete when none of its fields appear in the missing list
-// and we've loaded status at least once (percentComplete > 0)
-function isSectionComplete(sectionLabel: string, missingFields: string[], percentComplete: number): boolean {
-  if (percentComplete === 0) return false
+function isSectionComplete(
+  sectionLabel: string,
+  missingFields: string[],
+  percentComplete: number,
+): boolean {
+  if (percentComplete === 0) return false;
   return !missingFields.some((f) =>
-    f.toLowerCase().startsWith(sectionLabel.toLowerCase())
-  )
+    f.toLowerCase().startsWith(sectionLabel.toLowerCase()),
+  );
 }
 
 export function Sidebar() {
   const {
-    userEmail,
+    userId,
     activeSection,
     activeYear,
     percentComplete,
     missingFields,
     setActiveSection,
+    resetTaxData,
   } = useStore(
     useShallow((s) => ({
-      userEmail: s.userEmail,
+      userId: s.userId,
       activeSection: s.activeSection,
       activeYear: s.activeYear,
       percentComplete: s.percentComplete,
       missingFields: s.missingFields,
       setActiveSection: s.setActiveSection,
-    }))
-  )
+      resetTaxData: s.resetTaxData,
+    })),
+  );
 
-  const firstName = userEmail ? userEmail.split('@')[0] : 'there'
-  const hour = new Date().getHours()
-  const greeting =
-    hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,'
+  const [confirmReset, setConfirmReset] = useState(false);
 
-  const isPastYear = activeYear !== CURRENT_TAX_YEAR
-  const pastYearRecord = isPastYear ? PAST_YEAR_DATA[activeYear] : null
-  const effectivePercent = isPastYear ? 100 : Math.round(percentComplete)
+  const isPastYear = activeYear !== CURRENT_TAX_YEAR;
+  const pastYearRecord = isPastYear ? PAST_YEAR_DATA[activeYear] : null;
+  const effectivePercent = isPastYear ? 100 : Math.round(percentComplete);
+
+  async function handleReset() {
+    if (userId) {
+      await api.resetData(userId).catch(() => {});
+    }
+    resetTaxData();
+    setConfirmReset(false);
+  }
 
   return (
     <aside className="w-1/5 bg-cream-deep border-r border-hairline overflow-y-auto flex flex-col pt-8 px-4">
       {/* Greeting */}
       <div className="mb-5">
-        <p className="text-[13px] text-muted">{greeting}</p>
-        <h2 className="text-2xl font-extrabold text-ink mt-0.5 capitalize">{firstName}</h2>
+        <h2 className="text-2xl font-extrabold text-ink">Welcome back</h2>
       </div>
 
       {/* Progress ring */}
       <div className="flex justify-center mb-5">
         <ProgressRing
           percent={effectivePercent}
-          subLabel={isPastYear ? 'filed' : 'complete'}
+          subLabel={isPastYear ? "filed" : "complete"}
         />
       </div>
 
@@ -67,46 +77,92 @@ export function Sidebar() {
         </p>
         {isPastYear && pastYearRecord && (
           <span className="text-[10px] font-mono text-green font-semibold">
-            ✓ {pastYearRecord.filedDate.split(',')[0]}
+            ✓ {pastYearRecord.filedDate.split(",")[0]}
           </span>
         )}
       </div>
 
-      {/* Sections — always shown for all years */}
+      {/* Sections */}
       <nav className="flex-1">
         {TAX_SECTIONS.map((section) => {
-          const isActive = activeSection === section && !isPastYear
-          // Past years: all sections are complete. Current year: check missing fields.
-          const complete = isPastYear || isSectionComplete(section, missingFields, percentComplete)
-          const hasStarted = percentComplete > 0 || isPastYear
+          const isActive = activeSection === section && !isPastYear;
+          const complete =
+            isPastYear ||
+            isSectionComplete(section, missingFields, percentComplete);
+          const hasStarted = percentComplete > 0 || isPastYear;
 
           return (
             <button
               key={section}
-              onClick={() => { if (!isPastYear) setActiveSection(section) }}
+              onClick={() => {
+                if (!isPastYear) setActiveSection(section);
+              }}
               className={clsx(
-                'flex items-center justify-between w-full text-left py-1.5 px-2 text-[13px] rounded transition-colors mb-0.5',
+                "flex items-center justify-between w-full text-left py-1.5 px-2 text-[13px] rounded transition-colors mb-0.5",
                 isActive
-                  ? 'bg-green text-white font-semibold'
+                  ? "bg-green text-white font-semibold"
                   : isPastYear
-                  ? 'text-muted cursor-default'
-                  : 'text-ink hover:bg-[#F0EDE6] cursor-pointer'
+                    ? "text-muted cursor-default"
+                    : complete
+                      ? "bg-green-pale text-green cursor-pointer hover:opacity-80"
+                      : "text-ink hover:bg-[#F0EDE6] cursor-pointer",
               )}
             >
               <span>{section}</span>
 
               {/* Status indicator */}
               {complete ? (
-                <span className={clsx('text-[11px] font-bold ml-2 flex-shrink-0', isActive ? 'text-white' : 'text-green')}>
+                <span
+                  className={clsx(
+                    "text-[11px] font-bold ml-2 flex-shrink-0",
+                    isActive ? "text-white" : "text-green",
+                  )}
+                >
                   ✓
                 </span>
               ) : hasStarted ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber ml-2 flex-shrink-0" />
+                <span className="text-[13px] ml-2 flex-shrink-0 text-amber font-bold leading-none">
+                  ⚠
+                </span>
               ) : null}
             </button>
-          )
+          );
         })}
       </nav>
+
+      {/* Reset info */}
+      {!isPastYear && (
+        <div className="mt-4 pb-4">
+          {confirmReset ? (
+            <div className="p-3 bg-red-50 border border-red rounded-lg">
+              <p className="text-[12px] text-ink mb-2 font-medium">
+                This will permanently remove all tax data. Continue?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReset}
+                  className="text-[12px] text-white bg-red px-3 py-1 rounded-full font-medium cursor-pointer"
+                >
+                  Yes, reset
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="text-[12px] text-muted hover:text-ink transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="text-[11px] text-muted hover:text-red-500 transition-colors cursor-pointer"
+            >
+              Reset info
+            </button>
+          )}
+        </div>
+      )}
     </aside>
-  )
+  );
 }

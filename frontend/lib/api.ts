@@ -16,6 +16,22 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`)
+  return res.json()
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`)
+  return res.json()
+}
+
 async function postForm<T>(path: string, data: Record<string, string | File | number>): Promise<T> {
   const form = new FormData()
   for (const [k, v] of Object.entries(data)) {
@@ -74,6 +90,18 @@ export const api = {
       deductions: Record<string, unknown> | null
       credits: Record<string, unknown> | null
     }>(`/users/${userId}/data`),
+
+  updateData: (userId: number, data: {
+    tax_return?: Record<string, unknown> | null
+    w2_forms?: Record<string, unknown>[]
+    form_1099s?: Record<string, unknown>[]
+    deductions?: Record<string, unknown> | null
+    credits?: Record<string, unknown> | null
+  }) =>
+    put<{ user_id: number }>(`/users/${userId}/data`, data),
+
+  resetData: (userId: number) =>
+    del<{ success: boolean }>(`/users/${userId}/data`),
 }
 
 export { BASE }

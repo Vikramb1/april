@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import { clsx } from 'clsx'
 import { useShallow } from 'zustand/react/shallow'
@@ -22,16 +21,14 @@ const PHASE_LABELS: Record<string, string> = {
 }
 
 export function TopNav() {
-  const { userEmail, phase, activeYear, setActiveYear, logout } = useStore(
+  const { userEmail, phase, activeYear, setActiveYear } = useStore(
     useShallow((s) => ({
       userEmail: s.userEmail,
       phase: s.phase,
       activeYear: s.activeYear,
       setActiveYear: s.setActiveYear,
-      logout: s.logout,
     }))
   )
-  const [avatarOpen, setAvatarOpen] = useState(false)
 
   const initials = userEmail
     ? userEmail.slice(0, 2).toUpperCase()
@@ -52,7 +49,9 @@ export function TopNav() {
       </div>
 
       {/* Year switcher */}
-      <div className="flex gap-1 bg-[#F3F4F6] rounded-full p-1 ml-4">
+      <div className="flex items-center gap-2 ml-4">
+        <span className="text-[11px] uppercase tracking-widest text-muted font-semibold">Tax Year</span>
+        <div className="flex gap-1 bg-[#F3F4F6] rounded-full p-1">
         {ALL_YEARS.map((year) => {
           const isPast = year !== CURRENT_TAX_YEAR
           const isActive = activeYear === year
@@ -74,6 +73,7 @@ export function TopNav() {
             </button>
           )
         })}
+        </div>
       </div>
 
       {/* Phase pill */}
@@ -91,25 +91,8 @@ export function TopNav() {
       <div className="flex-1" />
 
       {/* Avatar */}
-      <div className="relative">
-        <button
-          onClick={() => setAvatarOpen((o) => !o)}
-          className="w-8 h-8 rounded-full bg-green text-white text-xs font-bold flex items-center justify-center"
-        >
-          {initials}
-        </button>
-        {avatarOpen && (
-          <div className="absolute right-0 top-10 bg-white border border-hairline rounded-xl shadow-sm w-40 py-1 z-50">
-            <p className="px-4 py-2 text-[12px] text-muted truncate">{userEmail}</p>
-            <hr className="border-hairline" />
-            <button
-              onClick={() => { logout(); setAvatarOpen(false) }}
-              className="w-full text-left px-4 py-2 text-[13px] text-ink hover:bg-[#F5F0E8] transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
+      <div className="w-8 h-8 rounded-full bg-green text-white text-xs font-bold flex items-center justify-center select-none">
+        {initials}
       </div>
     </header>
   )
