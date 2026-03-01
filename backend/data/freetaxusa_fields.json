@@ -1,84 +1,281 @@
 {
-  "_note": "This is a starter placeholder. Run `python scripts/scan_freetaxusa.py` to populate with real fields from FreeTaxUSA.",
-  "sections": [
+  "pages": [
     {
-      "name": "Personal Information",
-      "page_url_pattern": "/filing/personal-info",
+      "page_title": "Tell us about yourself",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Personal Information",
+      "page_order": 1,
       "fields": [
-        {"id": "first_name", "label": "First Name", "type": "text", "required": true},
-        {"id": "last_name", "label": "Last Name", "type": "text", "required": true},
-        {"id": "ssn", "label": "Social Security Number", "type": "text", "required": true},
-        {"id": "dob", "label": "Date of Birth", "type": "date", "required": true},
-        {"id": "address", "label": "Street Address", "type": "text", "required": true},
-        {"id": "city", "label": "City", "type": "text", "required": true},
-        {"id": "state", "label": "State", "type": "select", "required": true},
-        {"id": "zip", "label": "ZIP Code", "type": "text", "required": true},
-        {"id": "occupation", "label": "Occupation", "type": "text", "required": false}
+        {
+          "id": "tp_f_name_e",
+          "label": "First Name",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=18"
+        },
+        {
+          "id": "tp_m_i",
+          "label": "Middle Initial",
+          "type": "text",
+          "required": false,
+          "validation": "maxlength=1"
+        },
+        {
+          "id": "tp_l_name_e",
+          "label": "Last Name",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=25"
+        },
+        {
+          "id": "tp_suffix",
+          "label": "Jr., Sr., III",
+          "type": "select",
+          "required": false,
+          "options": [
+            "(blank)",
+            "JR",
+            "SR",
+            "II",
+            "III",
+            "IV",
+            "V",
+            "VI"
+          ]
+        },
+        {
+          "id": "tp_occupation",
+          "label": "Occupation",
+          "type": "text",
+          "required": false,
+          "validation": "maxlength=30"
+        },
+        {
+          "id": "tp_ssn",
+          "label": "Social Security Number",
+          "type": "text",
+          "required": true,
+          "validation": "SSN format XXX-XX-XXXX"
+        },
+        {
+          "id": "tp_birth_date",
+          "label": "Date of Birth",
+          "type": "date",
+          "required": true,
+          "validation": "MM/DD/YYYY format"
+        },
+        {
+          "id": "tp_address",
+          "label": "Address",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=35"
+        },
+        {
+          "id": "tp_apt",
+          "label": "Apt, Suite, Other",
+          "type": "text",
+          "required": false,
+          "validation": "maxlength=7"
+        },
+        {
+          "id": "tp_city",
+          "label": "City",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=22"
+        },
+        {
+          "id": "tp_state",
+          "label": "State",
+          "type": "select",
+          "required": true,
+          "options": [
+            "(blank)",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "AA",
+            "AE",
+            "AP",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "DC",
+            "FL",
+            "GA",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+          ]
+        },
+        {
+          "id": "tp_zip",
+          "label": "ZIP Code",
+          "type": "text",
+          "required": true,
+          "validation": "5 digits"
+        },
+        {
+          "id": "tp_zip_plus4",
+          "label": "ZIP + 4",
+          "type": "text",
+          "required": false,
+          "validation": "4 digits"
+        },
+        {
+          "id": "changed_address",
+          "label": "My address has changed since I last filed",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "can_claim_you",
+          "label": "Can someone claim you or your spouse as a dependent?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No",
+            "I'm not sure"
+          ]
+        },
+        {
+          "id": "pres_campaign_tp",
+          "label": "Presidential Election Campaign (Taxpayer)",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "tp_blind",
+          "label": "Are you blind?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "tp_deceased",
+          "label": "Did the taxpayer pass away in 2024?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "tp_nonresident",
+          "label": "Are you a nonresident alien?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
       ]
     },
     {
-      "name": "Filing Status",
-      "page_url_pattern": "/filing/filing-status",
+      "page_title": "Filing Status",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Filing Status",
+      "page_order": 2,
       "fields": [
-        {"id": "filing_status", "label": "Filing Status", "type": "radio", "required": true}
+        {
+          "id": "screen_file_status",
+          "label": "Select your filing status",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Single",
+            "Married Filing Jointly",
+            "Married Filing Separately",
+            "Head of Household",
+            "Qualifying Surviving Spouse",
+            "I'm not sure - help me decide"
+          ]
+        }
       ]
     },
     {
-      "name": "W-2 Income",
-      "page_url_pattern": "/filing/income/w2",
+      "page_title": "Dependents",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Personal Information",
+      "page_order": 3,
+      "fields": []
+    },
+    {
+      "page_title": "Personal Information Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Personal Information",
+      "page_order": 4,
       "fields": [
-        {"id": "employer_name", "label": "Employer Name", "type": "text", "required": true},
-        {"id": "ein", "label": "Employer EIN", "type": "text", "required": true},
-        {"id": "wages", "label": "Wages (Box 1)", "type": "number", "required": true},
-        {"id": "federal_withheld", "label": "Federal Income Tax Withheld (Box 2)", "type": "number", "required": true},
-        {"id": "ss_withheld", "label": "Social Security Tax Withheld (Box 4)", "type": "number", "required": false},
-        {"id": "medicare_withheld", "label": "Medicare Tax Withheld (Box 6)", "type": "number", "required": false},
-        {"id": "state_wages", "label": "State Wages (Box 16)", "type": "number", "required": false},
-        {"id": "state_withheld", "label": "State Income Tax Withheld (Box 17)", "type": "number", "required": false},
-        {"id": "box12_code", "label": "Box 12 Code", "type": "select", "required": false},
-        {"id": "box12_amount", "label": "Box 12 Amount", "type": "number", "required": false}
+        {
+          "id": "is_ippin_letter",
+          "label": "Did you receive an Identity Protection PIN letter from the IRS?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
       ]
     },
     {
-      "name": "1099 Income",
-      "page_url_pattern": "/filing/income/1099",
-      "fields": [
-        {"id": "form_type", "label": "1099 Form Type", "type": "select", "required": true},
-        {"id": "payer_name", "label": "Payer Name", "type": "text", "required": true},
-        {"id": "payer_tin", "label": "Payer TIN", "type": "text", "required": false},
-        {"id": "amount", "label": "Amount", "type": "number", "required": true},
-        {"id": "federal_withheld", "label": "Federal Tax Withheld", "type": "number", "required": false}
-      ]
-    },
-    {
-      "name": "Deductions",
-      "page_url_pattern": "/filing/deductions",
-      "fields": [
-        {"id": "type", "label": "Deduction Type", "type": "radio", "required": true},
-        {"id": "mortgage_interest", "label": "Mortgage Interest Paid", "type": "number", "required": false},
-        {"id": "charitable_cash", "label": "Cash Charitable Contributions", "type": "number", "required": false},
-        {"id": "student_loan_interest", "label": "Student Loan Interest", "type": "number", "required": false}
-      ]
-    },
-    {
-      "name": "Credits",
-      "page_url_pattern": "/filing/credits",
-      "fields": [
-        {"id": "child_tax_credit_count", "label": "Number of Qualifying Children (Child Tax Credit)", "type": "number", "required": false},
-        {"id": "education_credit_type", "label": "Education Credit Type", "type": "select", "required": false},
-        {"id": "eitc_qualifying_children", "label": "EITC Qualifying Children", "type": "number", "required": false}
-      ]
-    },
-    {
-      "name": "Bank / Refund",
-      "page_url_pattern": "/filing/bank-info",
-      "fields": [
-        {"id": "routing", "label": "Bank Routing Number", "type": "text", "required": true},
-        {"id": "account", "label": "Bank Account Number", "type": "text", "required": true},
-        {"id": "bank_account_type", "label": "Account Type", "type": "radio", "required": true}
-      ]
+      "page_title": "Deluxe gives you more",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Promotional",
+      "page_order": 5,
+      "fields": []
     }
   ],
-  "pdf_upload_sections": ["W-2 Income", "1099 Income"],
-  "scanned_at": null
+  "pdf_upload_sections": [],
+  "scanned_at": "2026-03-01T02:48:50.916850+00:00"
 }

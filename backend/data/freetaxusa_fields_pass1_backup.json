@@ -1,0 +1,219 @@
+{
+  "sections": [
+    {
+      "name": "Personal Information",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "tp_f_name_e", "label": "First Name", "type": "text", "required": true},
+        {"id": "tp_m_i", "label": "Middle Initial", "type": "text", "required": false},
+        {"id": "tp_l_name_e", "label": "Last Name", "type": "text", "required": true},
+        {"id": "tp_suffix", "label": "Jr., Sr., III", "type": "select", "required": false},
+        {"id": "tp_occ", "label": "Occupation", "type": "text", "required": true},
+        {"id": "tp_ssn_e", "label": "Social Security Number", "type": "text", "required": true},
+        {"id": "tp_dob", "label": "Date of Birth", "type": "date", "required": true},
+        {"id": "address_e", "label": "Street Address", "type": "text", "required": true},
+        {"id": "apt_no", "label": "Apt No", "type": "text", "required": false},
+        {"id": "city", "label": "City", "type": "text", "required": true},
+        {"id": "state", "label": "State", "type": "select", "required": true},
+        {"id": "zip", "label": "Zip Code", "type": "text", "required": true},
+        {"id": "county", "label": "County", "type": "text", "required": false},
+        {"id": "foreign_address", "label": "Foreign Address", "type": "text", "required": false},
+        {"id": "foreign_province", "label": "Foreign State/Province", "type": "text", "required": false},
+        {"id": "foreign_country", "label": "Foreign Country", "type": "select", "required": false},
+        {"id": "foreign_postal_code", "label": "Foreign Postal Code", "type": "text", "required": false},
+        {"id": "phone", "label": "Phone Number", "type": "text", "required": true},
+        {"id": "email", "label": "Email Address", "type": "email", "required": false}
+      ]
+    },
+    {
+      "name": "Filing Status",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "filing_status-1", "label": "Single", "type": "radio", "required": true},
+        {"id": "filing_status-2", "label": "Married Filing Jointly", "type": "radio", "required": true},
+        {"id": "filing_status-3", "label": "Married Filing Separately", "type": "radio", "required": true},
+        {"id": "filing_status-4", "label": "Head of Household", "type": "radio", "required": true},
+        {"id": "filing_status-5", "label": "Qualifying Surviving Spouse", "type": "radio", "required": true},
+        {"id": "filing_status-6", "label": "Qualifying Widow(er)", "type": "radio", "required": true}
+      ]
+    },
+    {
+      "name": "Personal Information Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "tp_ip_pin", "label": "Identity Protection PIN", "type": "text", "required": false}
+      ]
+    },
+    {
+      "name": "Income - W-2 Gateway",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "has_w2", "label": "Did you have a W-2 job?", "type": "radio", "required": true}
+      ]
+    },
+    {
+      "name": "Income - W-2 Entry Method",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "w2_entry_method", "label": "How would you like to enter your W-2?", "type": "radio", "required": true}
+      ]
+    },
+    {
+      "name": "Income - W-2 Data Entry",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "ein", "label": "Box b - Employer Identification Number (EIN)", "type": "text", "required": true},
+        {"id": "employer_name", "label": "Box c - Employer's Name", "type": "text", "required": true},
+        {"id": "employer_address", "label": "Employer's Address", "type": "text", "required": true},
+        {"id": "employer_city", "label": "Employer's City", "type": "text", "required": true},
+        {"id": "employer_state", "label": "Employer's State", "type": "select", "required": true},
+        {"id": "employer_zip", "label": "Employer's Zip Code", "type": "text", "required": true},
+        {"id": "box1", "label": "Box 1 - Wages, Tips, Other Compensation", "type": "number", "required": true},
+        {"id": "box2", "label": "Box 2 - Federal Income Tax Withheld", "type": "number", "required": true},
+        {"id": "box3", "label": "Box 3 - Social Security Wages", "type": "number", "required": false},
+        {"id": "box4", "label": "Box 4 - Social Security Tax Withheld", "type": "number", "required": false},
+        {"id": "box5", "label": "Box 5 - Medicare Wages and Tips", "type": "number", "required": false},
+        {"id": "box6", "label": "Box 6 - Medicare Tax Withheld", "type": "number", "required": false},
+        {"id": "box7", "label": "Box 7 - Social Security Tips", "type": "number", "required": false},
+        {"id": "box8", "label": "Box 8 - Allocated Tips", "type": "number", "required": false},
+        {"id": "box10", "label": "Box 10 - Dependent Care Benefits", "type": "number", "required": false},
+        {"id": "box11", "label": "Box 11 - Nonqualified Plans", "type": "number", "required": false},
+        {"id": "box12a_code", "label": "Box 12a - Code", "type": "select", "required": false},
+        {"id": "box12a_amount", "label": "Box 12a - Amount", "type": "number", "required": false},
+        {"id": "box12b_code", "label": "Box 12b - Code", "type": "select", "required": false},
+        {"id": "box12b_amount", "label": "Box 12b - Amount", "type": "number", "required": false},
+        {"id": "box12c_code", "label": "Box 12c - Code", "type": "select", "required": false},
+        {"id": "box12c_amount", "label": "Box 12c - Amount", "type": "number", "required": false},
+        {"id": "box12d_code", "label": "Box 12d - Code", "type": "select", "required": false},
+        {"id": "box12d_amount", "label": "Box 12d - Amount", "type": "number", "required": false},
+        {"id": "box13_statutory", "label": "Box 13 - Statutory Employee", "type": "checkbox", "required": false},
+        {"id": "box13_retirement", "label": "Box 13 - Retirement Plan", "type": "checkbox", "required": false},
+        {"id": "box13_third_party", "label": "Box 13 - Third-Party Sick Pay", "type": "checkbox", "required": false},
+        {"id": "box14_desc1", "label": "Box 14 - Description 1", "type": "text", "required": false},
+        {"id": "box14_amount1", "label": "Box 14 - Amount 1", "type": "number", "required": false},
+        {"id": "box14_desc2", "label": "Box 14 - Description 2", "type": "text", "required": false},
+        {"id": "box14_amount2", "label": "Box 14 - Amount 2", "type": "number", "required": false},
+        {"id": "box15_state", "label": "Box 15 - State", "type": "select", "required": false},
+        {"id": "box15_employer_state_id", "label": "Box 15 - Employer's State ID Number", "type": "text", "required": false},
+        {"id": "box16", "label": "Box 16 - State Wages, Tips, etc.", "type": "number", "required": false},
+        {"id": "box17", "label": "Box 17 - State Income Tax", "type": "number", "required": false},
+        {"id": "box18", "label": "Box 18 - Local Wages, Tips, etc.", "type": "number", "required": false},
+        {"id": "box19", "label": "Box 19 - Local Income Tax", "type": "number", "required": false},
+        {"id": "box20", "label": "Box 20 - Locality Name", "type": "text", "required": false},
+        {"id": "other_info_code1", "label": "Other Information - Code 1", "type": "text", "required": false},
+        {"id": "other_info_amount1", "label": "Other Information - Amount 1", "type": "number", "required": false},
+        {"id": "other_info_code2", "label": "Other Information - Code 2", "type": "text", "required": false},
+        {"id": "other_info_amount2", "label": "Other Information - Amount 2", "type": "number", "required": false},
+        {"id": "other_info_code3", "label": "Other Information - Code 3", "type": "text", "required": false},
+        {"id": "other_info_amount3", "label": "Other Information - Amount 3", "type": "number", "required": false}
+      ]
+    },
+    {
+      "name": "Income - W-2 Payer Confirmation",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "w2_payer_ein", "label": "Employer Identification Number (EIN)", "type": "text", "required": true},
+        {"id": "w2_payer_name", "label": "Employer Name", "type": "text", "required": true}
+      ]
+    },
+    {
+      "name": "Income - W-2 Tips and Overtime",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "w2_tips_question-1", "label": "Did you receive any tips? - Yes", "type": "radio", "required": false},
+        {"id": "w2_tips_question-2", "label": "Did you receive any tips? - No", "type": "radio", "required": false},
+        {"id": "w2_overtime_question-1", "label": "Did you work any overtime? - Yes", "type": "radio", "required": false},
+        {"id": "w2_overtime_question-2", "label": "Did you work any overtime? - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Cryptocurrency Question",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "crypto_question-1", "label": "Digital Asset Question - Yes", "type": "radio", "required": true},
+        {"id": "crypto_question-2", "label": "Digital Asset Question - No", "type": "radio", "required": true}
+      ]
+    },
+    {
+      "name": "Deductions - Itemized Deductions Gateway",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_homeowner", "label": "I am a homeowner or paid mortgage interest", "type": "checkbox", "required": false},
+        {"id": "is_donations", "label": "I made donations to charity", "type": "checkbox", "required": false},
+        {"id": "is_medical", "label": "I had medical or dental expenses", "type": "checkbox", "required": false},
+        {"id": "is_taxes_paid", "label": "I paid state and local taxes", "type": "checkbox", "required": false},
+        {"id": "is_investment_interest", "label": "I paid investment interest", "type": "checkbox", "required": false},
+        {"id": "is_casualty", "label": "I had a casualty or theft loss", "type": "checkbox", "required": false},
+        {"id": "is_other_deduction", "label": "I have other itemized deductions", "type": "checkbox", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - Marketplace Health Insurance",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_marketplace_health_insurance-1", "label": "Marketplace Health Insurance - Yes", "type": "radio", "required": false},
+        {"id": "is_marketplace_health_insurance-2", "label": "Marketplace Health Insurance - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - IRA Contributions",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_ira_2025-1", "label": "2025 IRA Contributions - Yes", "type": "radio", "required": false},
+        {"id": "is_ira_2025-2", "label": "2025 IRA Contributions - No", "type": "radio", "required": false},
+        {"id": "is_excess_ira_2024-1", "label": "2024 Excess IRA Contributions - Yes", "type": "radio", "required": false},
+        {"id": "is_excess_ira_2024-2", "label": "2024 Excess IRA Contributions - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - College Expenses",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_college_tuition-1", "label": "College Expenses - Yes", "type": "radio", "required": false},
+        {"id": "is_college_tuition-2", "label": "College Expenses - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - Student Loan Interest",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_student_loan_interest-1", "label": "Student Loan Interest - Yes", "type": "radio", "required": false},
+        {"id": "is_student_loan_interest-2", "label": "Student Loan Interest - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - Teacher Expenses",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_teacher_expenses-1", "label": "Teacher Expenses - Yes", "type": "radio", "required": false},
+        {"id": "is_teacher_expenses-2", "label": "Teacher Expenses - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - New Car Interest",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_new_car_interest-1", "label": "New Car Interest - Yes", "type": "radio", "required": false},
+        {"id": "is_new_car_interest-2", "label": "New Car Interest - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - Energy Efficiency",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_energy-1", "label": "Home Energy Efficiency Improvements - Yes", "type": "radio", "required": false},
+        {"id": "is_energy-2", "label": "Home Energy Efficiency Improvements - No", "type": "radio", "required": false},
+        {"id": "is_energy_carryforward-1", "label": "Home Energy Credit Carryforward - Yes", "type": "radio", "required": false},
+        {"id": "is_energy_carryforward-2", "label": "Home Energy Credit Carryforward - No", "type": "radio", "required": false}
+      ]
+    },
+    {
+      "name": "Credits - Child Care",
+      "page_url_pattern": "/taxes2025/taxcontrol?sid=10",
+      "fields": [
+        {"id": "is_child_care-1", "label": "Child Care Expenses - Yes", "type": "radio", "required": false},
+        {"id": "is_child_care-2", "label": "Child Care Expenses - No", "type": "radio", "required": false}
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database.models import TaxReturn, W2Form, Form1099, Deduction, Credit
-from app.services.field_loader import get_sections
+from app.services.field_loader import get_pages
 
 SECTION_TASK_TEMPLATE = """You are filling out a tax return on FreeTaxUSA.
 
@@ -73,8 +73,15 @@ async def run_submission(db: Session, user_id: int) -> list[dict[str, Any]]:
     """
     user_data = _load_user_data(db, user_id)
 
-    sections = get_sections()
-    section_names = [s["name"] for s in sections]
+    pages = get_pages()
+    # Derive unique section names from pages, preserving order
+    seen = set()
+    section_names = []
+    for p in pages:
+        name = p.get("section", p.get("page_title", "Unknown"))
+        if name not in seen:
+            section_names.append(name)
+            seen.add(name)
 
     # Always end with Review — never submit
     ordered_sections = []

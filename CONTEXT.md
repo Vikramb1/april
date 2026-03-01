@@ -7,7 +7,7 @@ April is a Python backend that collects user tax data through a conversational c
 ## Architecture Overview
 
 ```
-scripts/scan_freetaxusa.py     ← one-time runner, saves JSON field manifest
+scripts/scan_freetaxusa.py     ← multi-pass scanner, saves JSON field manifest
 data/freetaxusa_fields.json    ← field manifest consumed by all agents
 
 FastAPI backend/
@@ -43,7 +43,7 @@ backend/
 │       ├── browser_agent.py     # browser-use submission agent (CDP)
 │       └── field_loader.py      # load/query freetaxusa_fields.json
 ├── scripts/
-│   └── scan_freetaxusa.py       # one-time scanner (walks FreeTaxUSA with dummy data)
+│   └── scan_freetaxusa.py       # multi-pass scanner (6 passes to reveal all conditional fields)
 ├── data/
 │   └── freetaxusa_fields.json   # scanner output (placeholder committed; re-run scanner for real fields)
 ├── pyproject.toml
@@ -59,9 +59,17 @@ frontend/                        # Next.js frontend (connects to this API in the
 
 ### 1. Website Scanner (`scripts/scan_freetaxusa.py`)
 - Connects to an already-running Chrome instance via CDP at `http://localhost:9222`
-- Uses a browser-use `Agent` with Claude Sonnet to walk through FreeTaxUSA with dummy data
-- Records every field label, type, section, and required status encountered
+- Runs **6 sequential agent passes** over the same return, each with a different focus:
+  1. Baseline (Single + W-2) — base fields with standard deduction
+  2. Married Filing Jointly — spouse info, dependents, joint-specific options
+  3. Self-Employment (1099-NEC + Schedule C) — business income, expenses, home office, vehicle
+  4. Investment Income (1099-INT, 1099-DIV, 1099-B) — interest, dividends, capital gains
+  5. Itemized Deductions — mortgage, SALT, charitable, medical
+  6. Credits & Other — education credits, CTC, EITC, HSA, IRA
+- Each pass uses a browser-use `Agent` with Claude Sonnet and pass-specific dummy data
+- After each pass, newly discovered fields are merged into a cumulative manifest (deduplicated by section + field ID)
 - Outputs `data/freetaxusa_fields.json` — the canonical field manifest
+- Supports `--pass N` flag to run a single pass (merges into existing manifest)
 - Run once; commit the output
 
 ### 2. SQLite Models (`app/database/models.py`)
@@ -161,7 +169,10 @@ cp .env.example .env
 # Navigate Chrome to freetaxusa.com and start/log in to a return, then:
 cd backend
 python scripts/scan_freetaxusa.py
-# → writes data/freetaxusa_fields.json
+# → runs all 6 passes, writes data/freetaxusa_fields.json
+
+# Or run a single pass for debugging:
+python scripts/scan_freetaxusa.py --pass 2
 ```
 
 ### Step 2 — Start the server
