@@ -12,6 +12,46 @@ function formatMoney(val: number | undefined) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val)
 }
 
+const STD_DED: Record<string, number> = {
+  'Single': 15000, 'Married Filing Jointly': 30000,
+  'Married Filing Separately': 15000, 'Head of Household': 22500,
+  'Qualifying Surviving Spouse': 30000,
+}
+
+function calcTaxSingle(income: number): number {
+  if (income <= 0) return 0
+  const brackets = [
+    { limit: 11925, rate: 0.10 }, { limit: 48475, rate: 0.12 },
+    { limit: 103350, rate: 0.22 }, { limit: 197300, rate: 0.24 },
+    { limit: 250525, rate: 0.32 }, { limit: 626350, rate: 0.35 },
+    { limit: Infinity, rate: 0.37 },
+  ]
+  let tax = 0, prev = 0
+  for (const { limit, rate } of brackets) {
+    if (income <= prev) break
+    tax += (Math.min(income, limit) - prev) * rate
+    prev = limit
+  }
+  return Math.round(tax)
+}
+
+function calcTaxMFJ(income: number): number {
+  if (income <= 0) return 0
+  const brackets = [
+    { limit: 23850, rate: 0.10 }, { limit: 96950, rate: 0.12 },
+    { limit: 206700, rate: 0.22 }, { limit: 394600, rate: 0.24 },
+    { limit: 501050, rate: 0.32 }, { limit: 751600, rate: 0.35 },
+    { limit: Infinity, rate: 0.37 },
+  ]
+  let tax = 0, prev = 0
+  for (const { limit, rate } of brackets) {
+    if (income <= prev) break
+    tax += (Math.min(income, limit) - prev) * rate
+    prev = limit
+  }
+  return Math.round(tax)
+}
+
 interface ReviewRowProps {
   label: string
   value: string
@@ -50,6 +90,7 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
   )
 
   const [showModal, setShowModal] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   // Use dummy data for past years, live data for current year
   const taxData = frozenYear ? PAST_YEAR_DATA[frozenYear]?.taxData ?? liveTaxData : liveTaxData
@@ -59,8 +100,45 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
 
   const totalWages = w2s.reduce((sum, w) => sum + ((w.wages as number) ?? 0), 0)
   const totalFedWithheld = w2s.reduce((sum, w) => sum + ((w.federal_tax_withheld as number) ?? 0), 0)
-  const refund = tr.refund_amount as number | undefined
-  const owed = tr.tax_owed as number | undefined
+
+  // Use stored values if available, otherwise compute estimate
+  let refund = tr.refund_amount as number | undefined
+  let owed = tr.tax_owed as number | undefined
+  if (refund == null && owed == null && totalWages > 0) {
+    const filingStatus = (tr.filing_status as string) ?? 'Single'
+    const deduction = STD_DED[filingStatus] ?? 15000
+    const taxable = Math.max(0, totalWages - deduction)
+    const calcFn = filingStatus === 'Married Filing Jointly' ? calcTaxMFJ : calcTaxSingle
+    const tax = calcFn(taxable)
+    const diff = totalFedWithheld - tax
+    if (diff >= 0) { refund = diff } else { owed = Math.abs(diff) }
+  }
+
+  async function handleDownloadPdf() {
+    if (!userId || downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const res = await fetch(`http://localhost:8000/users/${userId}/tax-pdf`)
+      if (!res.ok) throw new Error('Failed to generate PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `tax-return-${new Date().getFullYear()}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      addMessage({
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Failed to generate the PDF. Please try again.',
+      })
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   async function handleFile() {
     const missing = getMissingFields(taxData)
@@ -71,16 +149,16 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
     if (!userId) return
     resetFiling()
     setPhase('filing')
-    try {
-      await api.submitTaxes(userId)
-    } catch {
+    // Fire-and-forget — progress comes via SSE filing-stream
+    api.submitTaxes(userId).catch(() => {
+      // Backend returns immediately now, so errors here mean network/server issue
       addMessage({
         id: Date.now().toString(),
         role: 'assistant',
         content: 'There was an issue starting the filing process. Please try again.',
       })
       setPhase('reviewing')
-    }
+    })
   }
 
   return (
@@ -112,12 +190,55 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
       </table>
 
       {!frozenYear && (
-        <button
-          onClick={handleFile}
-          className="w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors cursor-pointer"
-        >
-          File My Return →
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handleFile}
+            className="flex items-center justify-center gap-2 w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors cursor-pointer"
+          >
+            <img src="/freetax.png" alt="FreeTaxUSA" width={20} height={20} className="rounded" />
+            File with FreeTaxUSA
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || !userId}
+            className="flex items-center justify-center gap-2 w-full border border-green rounded-xl h-11 text-[15px] font-bold text-green hover:bg-green hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {downloadingPdf ? (
+              <>
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+                  <path d="M12 16V4M12 16l-4-4M12 16l4-4M4 20h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Download PDF for CPA
+              </>
+            )}
+          </button>
+          <button
+            disabled
+            className="flex items-center justify-center gap-2 w-full border border-hairline rounded-xl h-11 text-[15px] font-bold text-muted opacity-50 cursor-not-allowed"
+            title="Coming soon"
+          >
+            <img src="/turbotax.png" alt="TurboTax" width={20} height={20} className="rounded" />
+            File with TurboTax
+          </button>
+          <button
+            disabled
+            className="flex items-center justify-center gap-2 w-full border border-hairline rounded-xl h-11 text-[15px] font-bold text-muted opacity-50 cursor-not-allowed"
+            title="Coming soon"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+              <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Do It Yourself
+          </button>
+        </div>
       )}
 
       {/* Validation modal */}

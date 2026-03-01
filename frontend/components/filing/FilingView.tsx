@@ -2,24 +2,19 @@
 
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/store'
-import { useFilingStream } from '@/hooks/useFilingStream'
 import { FilingTimeline } from './FilingTimeline'
 import { TerminalLog } from './TerminalLog'
 
 export function FilingView() {
-  const { phase, userId, filingProgress } = useStore(
+  const { phase, filingProgress } = useStore(
     useShallow((s) => ({
       phase: s.phase,
-      userId: s.userId,
       filingProgress: s.filingProgress,
     }))
   )
 
-  const isStreaming = phase === 'filing'
-  useFilingStream(userId, isStreaming)
-
   const allDone = phase === 'filed'
-  const totalSections = 8
+  const totalSections = 9
   const completedCount = filingProgress.length
   const allSuccess = filingProgress.every((r) => r.success)
 

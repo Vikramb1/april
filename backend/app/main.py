@@ -1,7 +1,12 @@
 from contextlib import asynccontextmanager
+import asyncio
+import io
+import json
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db, init_db
@@ -41,6 +46,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Filing event bus (in-memory, per-user queues for SSE) ──────────────────
+_filing_events: dict[int, list[dict]] = {}  # user_id -> list of events
+_filing_waiters: dict[int, list[asyncio.Event]] = {}  # user_id -> list of asyncio.Events to notify
+
+
+def _emit_filing_event(user_id: int, event: dict):
+    """Push an event to the user's filing stream."""
+    _filing_events.setdefault(user_id, []).append(event)
+    for waiter in _filing_waiters.get(user_id, []):
+        waiter.set()
 
 
 # ── POST /users ────────────────────────────────────────────────────────────
@@ -176,17 +193,66 @@ def session_status(session_id: int, db: Session = Depends(get_db)):
 
 
 # ── POST /submit-taxes ─────────────────────────────────────────────────────
-@app.post("/submit-taxes", response_model=SubmitTaxesResponse)
+@app.post("/submit-taxes")
 async def submit_taxes(body: SubmitTaxesRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(id=body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    from app.services.browser_agent import run_submission
-    raw_results = await run_submission(db, body.user_id)
-    results = [SectionResult(**r) for r in raw_results]
-    overall = all(r.success for r in results)
-    return SubmitTaxesResponse(results=results, overall_success=overall)
+    # Clear previous events and start submission in background
+    _filing_events[body.user_id] = []
+
+    async def _run_filing(user_id: int):
+        from app.services.browser_agent import run_submission
+        from app.database.session import SessionLocal
+        bg_db = SessionLocal()
+        try:
+            results = await run_submission(bg_db, user_id, on_section_done=lambda evt: _emit_filing_event(user_id, evt))
+            overall = all(r["success"] for r in results)
+            _emit_filing_event(user_id, {
+                "type": "complete",
+                "overall_success": overall,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as e:
+            _emit_filing_event(user_id, {
+                "type": "error",
+                "message": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+        finally:
+            bg_db.close()
+
+    asyncio.create_task(_run_filing(body.user_id))
+    return {"status": "started", "user_id": body.user_id}
+
+
+# ── GET /filing-stream/{user_id} (SSE) ────────────────────────────────────
+@app.get("/filing-stream/{user_id}")
+async def filing_stream(user_id: int):
+    async def event_generator():
+        cursor = 0
+        waiter = asyncio.Event()
+        _filing_waiters.setdefault(user_id, []).append(waiter)
+        try:
+            while True:
+                events = _filing_events.get(user_id, [])
+                while cursor < len(events):
+                    evt = events[cursor]
+                    cursor += 1
+                    yield f"data: {json.dumps(evt)}\n\n"
+                    if evt.get("type") in ("complete", "error", "timeout"):
+                        return
+                waiter.clear()
+                try:
+                    await asyncio.wait_for(waiter.wait(), timeout=120)
+                except asyncio.TimeoutError:
+                    yield f"data: {json.dumps({'type': 'timeout'})}\n\n"
+                    return
+        finally:
+            _filing_waiters.get(user_id, []).remove(waiter)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # ── POST /retry-section ────────────────────────────────────────────────────
@@ -311,7 +377,19 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Start the task and get live_url + task_id
+    # Check for existing saved W-2 data first (any user — for dev/demo)
+    import json as _json
+    existing_w2 = db.query(W2Form).filter(W2Form.extra_data.isnot(None)).order_by(W2Form.id.desc()).first()
+    if existing_w2 and existing_w2.extra_data:
+        fields = _json.loads(existing_w2.extra_data) if isinstance(existing_w2.extra_data, str) else existing_w2.extra_data
+        return FetchGustoW2Response(
+            form_type="W-2",
+            extracted_fields=fields,
+            saved=True,
+            w2_id=existing_w2.id,
+        )
+
+    # No saved data — try browser automation
     from app.services.gusto_agent import start_gusto_w2_task, get_gusto_w2_result
     task_info = await start_gusto_w2_task()
     import logging
@@ -319,7 +397,6 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
         f"Gusto live URL (enter MFA here if needed): {task_info['live_url']}"
     )
 
-    # Wait for the task to complete and get PDF bytes
     try:
         pdf_bytes = await get_gusto_w2_result(task_info["task_id"])
     except RuntimeError as e:
@@ -366,6 +443,20 @@ async def fetch_fidelity_1099(body: FetchFidelity1099Request, db: Session = Depe
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Check for existing saved 1099 data first (any user — for dev/demo)
+    import json as _json
+    existing_1099 = db.query(Form1099).filter(Form1099.raw_json.isnot(None)).order_by(Form1099.id.desc()).first()
+    if existing_1099 and existing_1099.raw_json:
+        fields = _json.loads(existing_1099.raw_json) if isinstance(existing_1099.raw_json, str) else existing_1099.raw_json
+        form_type = f"1099-{existing_1099.form_type}" if existing_1099.form_type else "1099"
+        return FetchFidelity1099Response(
+            form_type=form_type,
+            extracted_fields=fields,
+            saved=True,
+            form_1099_id=existing_1099.id,
+        )
+
+    # No saved data — try browser automation
     from app.services.fidelity_agent import start_fidelity_1099_task, get_fidelity_1099_result
     task_info = await start_fidelity_1099_task()
     import logging
@@ -522,6 +613,254 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
         dependents=tr.dependents or [] if tr else [],
         misc_info=tr.misc_info if tr else None,
         state_info=tr.state_info if tr else None,
+    )
+
+
+# ── POST /upload-w2-pdf ────────────────────────────────────────────────────
+@app.post("/upload-w2-pdf")
+async def upload_w2_pdf(
+    user_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload a W-2 PDF, parse it with AI, and return extracted fields."""
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    pdf_bytes = await file.read()
+    extracted = await parse_tax_pdf(pdf_bytes)
+    form_type = extracted.get("form_type", "unknown")
+    fields = extracted.get("fields", extracted)
+
+    return {"form_type": form_type, "extracted_fields": fields}
+
+
+# ── POST /upload-1099-pdf ─────────────────────────────────────────────────
+@app.post("/upload-1099-pdf")
+async def upload_1099_pdf(
+    user_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload a 1099 PDF, parse it with AI, and return extracted fields."""
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    pdf_bytes = await file.read()
+    extracted = await parse_tax_pdf(pdf_bytes)
+    form_type = extracted.get("form_type", "unknown")
+    fields = extracted.get("fields", extracted)
+
+    return {"form_type": form_type, "extracted_fields": fields}
+
+
+# ── GET /users/{user_id}/tax-pdf ────────────────────────────────────────────
+@app.get("/users/{user_id}/tax-pdf")
+def generate_tax_pdf(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
+    w2s = db.query(W2Form).filter_by(user_id=user_id).all()
+    f1099s = db.query(Form1099).filter_by(user_id=user_id).all()
+    ded = db.query(Deduction).filter_by(user_id=user_id).first()
+    cred = db.query(Credit).filter_by(user_id=user_id).first()
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.6*inch, bottomMargin=0.6*inch,
+                            leftMargin=0.75*inch, rightMargin=0.75*inch)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('Title2', parent=styles['Title'], fontSize=20, spaceAfter=4)
+    subtitle_style = ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, textColor=colors.grey, spaceAfter=12)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=14, spaceBefore=16, spaceAfter=6,
+                                   textColor=colors.HexColor('#1a1a1a'))
+    label_style = ParagraphStyle('Label', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
+    value_style = ParagraphStyle('Value', parent=styles['Normal'], fontSize=11)
+
+    story = []
+
+    # Header
+    story.append(Paragraph("Tax Return Summary", title_style))
+    story.append(Paragraph(f"Prepared for {user.email} &bull; Tax Year 2025", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e5e5e5'), spaceAfter=12))
+
+    def add_section(title):
+        story.append(Paragraph(title, section_style))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e5e5'), spaceAfter=8))
+
+    def add_field_table(fields):
+        """fields: list of (label, value) tuples"""
+        data = []
+        for label, val in fields:
+            if val is None or val == '':
+                val = '—'
+            data.append([
+                Paragraph(str(label), label_style),
+                Paragraph(str(val), value_style),
+            ])
+        if not data:
+            return
+        t = Table(data, colWidths=[2.8*inch, 4*inch])
+        t.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LINEBELOW', (0, 0), (-1, -1), 0.25, colors.HexColor('#f0f0f0')),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 6))
+
+    def fmt_money(v):
+        if v is None:
+            return '—'
+        try:
+            return f"${float(v):,.2f}"
+        except (ValueError, TypeError):
+            return str(v)
+
+    # Personal Information
+    if tr:
+        add_section("Personal Information")
+        d = _row_to_dict(tr, _TR_RENAMES) or {}
+        add_field_table([
+            ("First Name", d.get('first_name')),
+            ("Last Name", d.get('last_name')),
+            ("SSN", d.get('ssn')),
+            ("Date of Birth", d.get('date_of_birth') or d.get('dob')),
+            ("Address", d.get('address')),
+            ("Filing Status", d.get('filing_status')),
+            ("Occupation", d.get('occupation')),
+        ])
+
+    # W-2 Forms
+    if w2s:
+        add_section(f"W-2 Income ({len(w2s)} form{'s' if len(w2s) > 1 else ''})")
+        for i, w2 in enumerate(w2s):
+            wd = _row_to_dict(w2, _W2_RENAMES) or {}
+            if len(w2s) > 1:
+                story.append(Paragraph(f"W-2 #{i+1}", ParagraphStyle('W2Num', parent=styles['Normal'],
+                             fontSize=11, fontName='Helvetica-Bold', spaceBefore=8, spaceAfter=4)))
+            add_field_table([
+                ("Employer", wd.get('employer_name')),
+                ("EIN", wd.get('ein')),
+                ("Wages (Box 1)", fmt_money(wd.get('wages'))),
+                ("Federal Tax Withheld (Box 2)", fmt_money(wd.get('federal_tax_withheld'))),
+                ("SS Wages (Box 3)", fmt_money(wd.get('social_security_wages'))),
+                ("SS Tax Withheld (Box 4)", fmt_money(wd.get('social_security_tax_withheld'))),
+                ("Medicare Wages (Box 5)", fmt_money(wd.get('medicare_wages'))),
+                ("Medicare Tax Withheld (Box 6)", fmt_money(wd.get('medicare_tax_withheld'))),
+                ("State", wd.get('state')),
+                ("State Wages (Box 16)", fmt_money(wd.get('state_wages'))),
+                ("State Tax Withheld (Box 17)", fmt_money(wd.get('state_tax_withheld'))),
+            ])
+
+    # 1099 Forms
+    if f1099s:
+        add_section(f"1099 Income ({len(f1099s)} form{'s' if len(f1099s) > 1 else ''})")
+        for i, f in enumerate(f1099s):
+            fd = _row_to_dict(f) or {}
+            if len(f1099s) > 1:
+                story.append(Paragraph(f"1099-{f.form_type or '?'} #{i+1}", ParagraphStyle('F1099Num',
+                             parent=styles['Normal'], fontSize=11, fontName='Helvetica-Bold',
+                             spaceBefore=8, spaceAfter=4)))
+            fields = [("Payer", fd.get('payer_name')), ("Form Type", f"1099-{f.form_type or '?'}")]
+            # Add all numeric fields from raw_json
+            raw = f.raw_json if isinstance(f.raw_json, dict) else {}
+            for k, v in raw.items():
+                if k in ('form_type', 'payer_name', 'payer_tin'):
+                    continue
+                if isinstance(v, dict):
+                    for sk, sv in v.items():
+                        if isinstance(sv, (int, float)) and sv != 0:
+                            fields.append((sk.replace('_', ' ').title(), fmt_money(sv)))
+                elif isinstance(v, (int, float)) and v != 0:
+                    fields.append((k.replace('_', ' ').title(), fmt_money(v)))
+            add_field_table(fields)
+
+    # Deductions
+    add_section("Deductions")
+    if ded:
+        dd = _deduction_to_dict(ded) or {}
+        items = [(k.replace('_', ' ').title(), fmt_money(v)) for k, v in dd.items()
+                 if v is not None and v != 0]
+        if items:
+            add_field_table(items)
+        else:
+            story.append(Paragraph("Standard deduction", value_style))
+    else:
+        story.append(Paragraph("Standard deduction", value_style))
+
+    # Credits
+    add_section("Credits")
+    if cred:
+        cd = _credit_to_dict(cred) or {}
+        items = [(k.replace('_', ' ').title(), str(v)) for k, v in cd.items()
+                 if v is not None and v != 0]
+        if items:
+            add_field_table(items)
+        else:
+            story.append(Paragraph("No credits claimed", value_style))
+    else:
+        story.append(Paragraph("No credits claimed", value_style))
+
+    # Bank Info
+    if tr:
+        d = _row_to_dict(tr, _TR_RENAMES) or {}
+        routing = d.get('bank_routing_number')
+        account = d.get('bank_account_number')
+        if routing or account:
+            add_section("Direct Deposit")
+            add_field_table([
+                ("Routing Number", routing),
+                ("Account Number", account),
+            ])
+
+    # Other Income
+    if tr and tr.other_income:
+        add_section("Other Income")
+        items = [(k.replace('_', ' ').title(), str(v)) for k, v in tr.other_income.items()
+                 if v is not None]
+        add_field_table(items)
+
+    # State Info
+    if tr and tr.state_info:
+        add_section("State Information")
+        items = [(k.replace('_', ' ').title(), str(v)) for k, v in tr.state_info.items()
+                 if v is not None]
+        add_field_table(items)
+
+    # Dependents
+    if tr and tr.dependents:
+        add_section(f"Dependents ({len(tr.dependents)})")
+        for i, dep in enumerate(tr.dependents):
+            story.append(Paragraph(f"Dependent #{i+1}", ParagraphStyle('DepNum', parent=styles['Normal'],
+                         fontSize=11, fontName='Helvetica-Bold', spaceBefore=6, spaceAfter=4)))
+            items = [(k.replace('_', ' ').title(), str(v)) for k, v in dep.items() if v is not None]
+            add_field_table(items)
+
+    # Misc Info
+    if tr and tr.misc_info:
+        add_section("Miscellaneous")
+        items = [(k.replace('_', ' ').title(), str(v)) for k, v in tr.misc_info.items()
+                 if v is not None]
+        add_field_table(items)
+
+    doc.build(story)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=tax-return-2025.pdf"},
     )
 
 

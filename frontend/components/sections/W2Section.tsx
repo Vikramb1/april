@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/store'
+import { api } from '@/lib/api'
 
 const US_STATES = [
   'AL','AK','AZ','AR','AA','AE','AP','CA','CO','CT',
@@ -28,6 +29,18 @@ function formatMoney(val: number | undefined) {
 type W2Record = Record<string, unknown>
 
 function W2Card({ w2, onRemove }: { w2: W2Record; onRemove: () => void }) {
+  const fields: [string, unknown][] = [
+    ['Wages (Box 1)', w2.wages],
+    ['Federal Withheld (Box 2)', w2.federal_tax_withheld],
+    ['SS Wages (Box 3)', w2.social_security_wages],
+    ['SS Tax Withheld (Box 4)', w2.social_security_tax_withheld],
+    ['Medicare Wages (Box 5)', w2.medicare_wages],
+    ['Medicare Withheld (Box 6)', w2.medicare_tax_withheld],
+    ['State Wages (Box 16)', w2.state_wages],
+    ['State Tax Withheld (Box 17)', w2.state_tax_withheld],
+  ]
+  const visible = fields.filter(([, val]) => val != null && val !== 0)
+
   return (
     <div className="bg-cream-deep border border-hairline rounded-xl p-5 mb-3">
       <div className="flex items-baseline justify-between mb-3">
@@ -44,16 +57,20 @@ function W2Card({ w2, onRemove }: { w2: W2Record; onRemove: () => void }) {
         </button>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {([
-          ['Wages (Box 1)', w2.wages],
-          ['Federal Withheld (Box 2)', w2.federal_tax_withheld],
-        ] as [string, unknown][]).map(([label, val]) => (
-          <div key={label}>
-            <p className="text-[12px] text-muted">{label}</p>
+        {visible.map(([label, val]) => (
+          <div key={label as string}>
+            <p className="text-[12px] text-muted">{label as string}</p>
             <p className="font-mono text-[14px] text-ink">{formatMoney(val as number | undefined)}</p>
           </div>
         ))}
       </div>
+      {(w2.state as string) && (
+        <div className="mt-2">
+          <span className="rounded-full bg-[#F3F4F6] text-muted text-[11px] px-2 py-0.5 font-mono">
+            {w2.state as string}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -223,14 +240,112 @@ const EMPTY_FORM = {
 
 type FormState = typeof EMPTY_FORM
 
+// Persists form state across tab switches (component unmount/remount)
+let _savedW2Form: FormState | null = null
+let _savedW2ShowForm = false
+
 export function W2Section() {
-  const { taxData, setTaxData } = useStore(
-    useShallow((s) => ({ taxData: s.taxData, setTaxData: s.setTaxData }))
+  const { taxData, setTaxData, userId } = useStore(
+    useShallow((s) => ({ taxData: s.taxData, setTaxData: s.setTaxData, userId: s.userId }))
   )
   const w2s = taxData?.w2_forms ?? []
 
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [showForm, setShowForm] = useState(_savedW2ShowForm)
+  const [form, setForm] = useState<FormState>(_savedW2Form ?? EMPTY_FORM)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  // Sync form state to module-level vars so it survives tab switches
+  useEffect(() => { _savedW2Form = form }, [form])
+  useEffect(() => { _savedW2ShowForm = showForm }, [showForm])
+
+  function fieldsToForm(fields: Record<string, unknown>): FormState {
+    const s = (key: string) => fields[key] != null ? String(fields[key]) : ''
+    const b = (key: string) => !!fields[key]
+    return {
+      employer_name: s('employer_name'),
+      ein: s('ein'),
+      employer_address_type: s('employer_address_type'),
+      employer_address: s('employer_address'),
+      employer_city: s('employer_city'),
+      employer_state: s('employer_state'),
+      employer_zip: s('employer_zip'),
+      employee_name: s('employee_name'),
+      employee_address_type: s('employee_address_type'),
+      employee_address: s('employee_address'),
+      employee_city: s('employee_city'),
+      employee_state: s('employee_state'),
+      employee_zip: s('employee_zip'),
+      wages: s('wages'),
+      federal_tax_withheld: s('federal_tax_withheld'),
+      social_security_wages: s('social_security_wages'),
+      social_security_tax_withheld: s('social_security_tax_withheld'),
+      medicare_wages: s('medicare_wages'),
+      medicare_tax_withheld: s('medicare_tax_withheld'),
+      social_security_tips: s('social_security_tips'),
+      allocated_tips: s('allocated_tips'),
+      dependent_care_benefits: s('dependent_care_benefits'),
+      nonqualified_plans: s('nonqualified_plans'),
+      box12_code1: s('box12_code1'),
+      box12_amount1: s('box12_amount1'),
+      box12_code2: s('box12_code2'),
+      box12_amount2: s('box12_amount2'),
+      statutory_employee: b('statutory_employee'),
+      retirement_plan: b('retirement_plan'),
+      third_party_sick_pay: b('third_party_sick_pay'),
+      box14_other: s('box14_other'),
+      state: s('state'),
+      state_wages: s('state_wages'),
+      state_tax_withheld: s('state_tax_withheld'),
+      local_wages: s('local_wages'),
+      local_tax: s('local_tax'),
+      local_tax_state: s('local_tax_state'),
+      locality_name: s('locality_name'),
+      w2_type: s('w2_type'),
+      is_corrected: s('is_corrected'),
+      has_tip_income: s('has_tip_income'),
+      has_overtime: s('has_overtime'),
+    }
+  }
+
+  async function handleUploadW2() {
+    if (!userId || uploading) return
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.pdf'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setUploading(true)
+      setImportError(null)
+      try {
+        const res = await api.uploadW2Pdf(userId, file)
+        setForm(fieldsToForm(res.extracted_fields))
+        setShowForm(true)
+      } catch (e) {
+        setImportError(e instanceof Error ? e.message : 'Upload failed')
+      } finally {
+        setUploading(false)
+      }
+    }
+    input.click()
+  }
+
+  async function handleImportGusto() {
+    if (!userId || importing) return
+    setImporting(true)
+    setImportError(null)
+    try {
+      const res = await api.fetchGustoW2(userId)
+      setForm(fieldsToForm(res.extracted_fields))
+      setShowForm(true)
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   function setStr(key: keyof FormState) {
     return (v: string) => setForm((f) => ({ ...f, [key]: v }))
@@ -433,12 +548,86 @@ export function W2Section() {
       )}
 
       {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="text-green text-[14px] font-medium cursor-pointer mt-2 hover:text-green-mid transition-colors"
-        >
-          + Add {w2s.length > 0 ? 'Another' : 'a'} W-2
-        </button>
+        <div className="grid grid-cols-3 gap-3 mt-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center justify-center gap-2 border border-green rounded-lg px-3 py-2 text-[13px] font-medium text-green hover:bg-green hover:text-white transition-colors cursor-pointer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+            Add Manually
+          </button>
+          <button
+            onClick={handleUploadW2}
+            disabled={uploading || !userId}
+            className="flex items-center justify-center gap-2 border border-green rounded-lg px-3 py-2 text-[13px] font-medium text-green hover:bg-green hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {uploading ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Parsing W-2...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+                  <path d="M12 8V20M12 8l-4 4M12 8l4 4M4 4h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Upload PDF
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleImportGusto}
+            disabled={importing || !userId}
+            className="flex items-center justify-center gap-2 border border-[#F45D48] rounded-lg px-3 py-2 text-[13px] font-medium text-[#F45D48] hover:bg-[#F45D48] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {importing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Importing...
+              </>
+            ) : (
+              <>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-[#F45D48] text-white text-[10px] font-bold leading-none">G</span>
+                Import from Gusto
+              </>
+            )}
+          </button>
+          <button
+            disabled
+            className="flex items-center justify-center gap-2 border border-hairline rounded-lg px-3 py-2 text-[13px] font-medium text-muted opacity-50 cursor-not-allowed"
+            title="Coming soon"
+          >
+            <img src="/deel.png" alt="Deel" width={16} height={16} className="rounded-full" />
+            Import from Deel
+          </button>
+          <button
+            disabled
+            className="flex items-center justify-center gap-2 border border-hairline rounded-lg px-3 py-2 text-[13px] font-medium text-muted opacity-50 cursor-not-allowed"
+            title="Coming soon"
+          >
+            <img src="/onpay.png" alt="OnPay" width={16} height={16} className="rounded-full" />
+            Import from OnPay
+          </button>
+          <button
+            disabled
+            className="flex items-center justify-center gap-2 border border-hairline rounded-lg px-3 py-2 text-[13px] font-medium text-muted opacity-50 cursor-not-allowed"
+            title="Coming soon"
+          >
+            <img src="/rippling.png" alt="Rippling" width={16} height={16} className="rounded-full" />
+            Import from Rippling
+          </button>
+        </div>
+      )}
+      {importError && (
+        <p className="text-[12px] text-red mt-2">{importError}</p>
       )}
     </div>
   )

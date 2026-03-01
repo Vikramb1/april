@@ -9,7 +9,7 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 import { SECTION_GROUPS } from "@/lib/types";
 import type { TaxData } from "@/lib/types";
 import { isSectionComplete, OPTIONAL_SECTIONS } from "@/lib/sectionUtils";
-import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from "@/lib/dummyData";
+import { PAST_YEAR_DATA, CURRENT_TAX_YEAR, generateTestData } from "@/lib/dummyData";
 
 // ── Refund estimate helpers ──────────────────────────────────────────────────
 function calcTaxSingle(income: number): number {
@@ -140,6 +140,7 @@ export function Sidebar() {
     taxData,
     visitedSections,
     setActiveSection,
+    setTaxData,
     resetTaxData,
   } = useStore(
     useShallow((s) => ({
@@ -149,6 +150,7 @@ export function Sidebar() {
       taxData: s.taxData,
       visitedSections: s.visitedSections,
       setActiveSection: s.setActiveSection,
+      setTaxData: s.setTaxData,
       resetTaxData: s.resetTaxData,
     })),
   );
@@ -159,12 +161,13 @@ export function Sidebar() {
   const pastYearRecord = isPastYear ? PAST_YEAR_DATA[activeYear] : null;
 
   const allSubKeys = SECTION_GROUPS.flatMap((g) => g.subsections.map((s) => s.key));
+  const countableKeys = allSubKeys.filter((k) => k !== 'review');
   const completedCount = isPastYear
-    ? allSubKeys.length
-    : allSubKeys.filter((k) =>
+    ? countableKeys.length
+    : countableKeys.filter((k) =>
         isSectionComplete(k, taxData, visitedSections.includes(k)),
       ).length;
-  const effectivePercent = Math.round((completedCount / allSubKeys.length) * 100);
+  const effectivePercent = Math.round((completedCount / countableKeys.length) * 100);
 
   const activeGroup = SECTION_GROUPS.find((g) =>
     g.subsections.some((s) => s.key === activeSection),
@@ -334,7 +337,7 @@ export function Sidebar() {
       </nav>
 
       {!isPastYear && (
-        <div className="mt-4 pb-4 px-1">
+        <div className="mt-auto pb-4 px-1">
           {confirmReset ? (
             <div className="p-3 bg-red-50 border border-red rounded-lg">
               <p className="text-[12px] text-ink mb-2 font-medium">
@@ -356,12 +359,24 @@ export function Sidebar() {
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => setConfirmReset(true)}
-              className="text-[11px] text-muted hover:text-red-500 transition-colors cursor-pointer"
-            >
-              Reset info
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="text-[11px] text-muted hover:text-red-500 transition-colors cursor-pointer"
+              >
+                Reset info
+              </button>
+              <button
+                onClick={() => {
+                  setTaxData(generateTestData());
+                  const allKeys = SECTION_GROUPS.flatMap((g) => g.subsections.map((s) => s.key));
+                  useStore.setState({ visitedSections: allKeys });
+                }}
+                className="text-[11px] text-muted hover:text-green transition-colors cursor-pointer"
+              >
+                Test user
+              </button>
+            </div>
           )}
         </div>
       )}

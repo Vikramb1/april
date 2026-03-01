@@ -1,5 +1,8 @@
 import httpx
-from browser_use_sdk import AsyncBrowserUse
+try:
+    from browser_use_sdk import AsyncBrowserUse
+except ImportError:
+    AsyncBrowserUse = None  # type: ignore
 
 from app.config import settings
 

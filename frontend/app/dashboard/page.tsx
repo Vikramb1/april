@@ -10,6 +10,7 @@ import { ChatPanel } from '@/components/chat/ChatPanel'
 import { SectionContent } from '@/components/sections/SectionContent'
 import { ReviewSection } from '@/components/sections/ReviewSection'
 import { FilingView } from '@/components/filing/FilingView'
+import { useFilingStream } from '@/hooks/useFilingStream'
 import { CURRENT_TAX_YEAR } from '@/lib/dummyData'
 
 // Middle panel when viewing a past (filed) year
@@ -24,6 +25,7 @@ function PastYearPanel({ year }: { year: string }) {
 // Middle panel for current year — section content only, no pills
 function CurrentYearPanel() {
   const phase = useStore((s) => s.phase)
+  const activeSection = useStore((s) => s.activeSection)
   const saveStatus = useStore((s) => s.saveStatus)
   const taxData = useStore((s) => s.taxData)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -50,28 +52,37 @@ function CurrentYearPanel() {
     })
   }, [taxData, phase])
 
-  if (phase === 'filing' || phase === 'filed') {
+  if ((phase === 'filing' || phase === 'filed') && activeSection === 'review') {
     return <FilingView />
   }
 
-  if (phase === 'reviewing') {
+  if (activeSection === 'review') {
     return (
       <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6">
-        <div className="mb-5 flex items-center gap-3 bg-green-pale border border-green rounded-xl px-4 py-3">
-          <span className="text-green font-bold text-[20px]">✓</span>
-          <div>
-            <p className="text-green font-semibold text-[14px]">All information collected</p>
-            <p className="text-[12px] text-muted">Review your return below, then file when ready.</p>
+        {phase === 'reviewing' && (
+          <div className="mb-5 flex items-center gap-3 bg-green-pale border border-green rounded-xl px-4 py-3">
+            <span className="text-green font-bold text-[20px]">✓</span>
+            <div>
+              <p className="text-green font-semibold text-[14px]">All information collected</p>
+              <p className="text-[12px] text-muted">Review your return below, then file when ready.</p>
+            </div>
           </div>
-        </div>
+        )}
         <ReviewSection />
       </div>
     )
   }
 
+  const isFiling = phase === 'filing' || phase === 'filed'
+
   // Collecting phase — just section content, sidebar handles navigation
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6 relative">
+    <div ref={scrollRef} className={`flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6 relative ${isFiling ? 'pointer-events-none opacity-60' : ''}`}>
+      {isFiling && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-amber-pale border border-amber rounded-full px-4 py-1.5 text-[12px] text-amber font-medium pointer-events-auto">
+          Filing in progress — fields are locked
+        </div>
+      )}
       {saveStatus !== 'idle' && (
         <div className="absolute top-4 right-4 text-[11px] font-medium pointer-events-none">
           {saveStatus === 'saving' && <span className="text-muted shimmer">Saving…</span>}
@@ -102,6 +113,7 @@ export default function Dashboard() {
     userId,
     sessionId,
     userEmail,
+    phase,
     setUser,
     setSession,
     setPercentComplete,
@@ -114,6 +126,7 @@ export default function Dashboard() {
       userId: s.userId,
       sessionId: s.sessionId,
       userEmail: s.userEmail,
+      phase: s.phase,
       setUser: s.setUser,
       setSession: s.setSession,
       setPercentComplete: s.setPercentComplete,
@@ -123,6 +136,9 @@ export default function Dashboard() {
       resetTaxData: s.resetTaxData,
     }))
   )
+
+  // SSE stream for filing progress — lives at Dashboard level so it persists across section navigation
+  useFilingStream(userId, phase === 'filing')
 
   const [initialized, setInitialized] = useState(false)
   const [backendDown, setBackendDown] = useState(false)

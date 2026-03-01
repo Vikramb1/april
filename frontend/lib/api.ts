@@ -122,6 +122,30 @@ export const api = {
 
   resetData: (userId: number) =>
     del<{ success: boolean }>(`/users/${userId}/data`),
+
+  uploadW2Pdf: (userId: number, file: File) =>
+    postForm<{ form_type: string; extracted_fields: Record<string, unknown> }>(
+      '/upload-w2-pdf',
+      { user_id: userId, file }
+    ),
+
+  upload1099Pdf: (userId: number, file: File) =>
+    postForm<{ form_type: string; extracted_fields: Record<string, unknown> }>(
+      '/upload-1099-pdf',
+      { user_id: userId, file }
+    ),
+
+  fetchGustoW2: (userId: number) =>
+    post<{ form_type: string; extracted_fields: Record<string, unknown>; saved: boolean; w2_id: number }>(
+      '/fetch-gusto-w2',
+      { user_id: userId }
+    ),
+
+  fetchFidelity1099: (userId: number) =>
+    post<{ form_type: string; extracted_fields: Record<string, unknown>; saved: boolean; form_1099_id: number }>(
+      '/fetch-fidelity-1099',
+      { user_id: userId }
+    ),
 }
 
 export { BASE }

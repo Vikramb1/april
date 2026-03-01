@@ -1,7 +1,19 @@
 'use client'
 
 import { useStore } from '@/store'
-import { TAX_SECTIONS } from '@/lib/types'
+
+// Backend section names (must match SECTION_CONFIGS in browser_agent.py)
+const FILING_SECTIONS = [
+  'Personal Information',
+  'Income',
+  'Deductions',
+  'Credits',
+  'Miscellaneous',
+  'Summary & State',
+  'Final Steps',
+  'Bank/Refund',
+  'Review',
+]
 
 function formatTime(iso: string | undefined) {
   if (!iso) return ''
@@ -16,7 +28,7 @@ function formatTime(iso: string | undefined) {
 export function FilingTimeline() {
   const filingProgress = useStore((s) => s.filingProgress)
 
-  const sections = TAX_SECTIONS.map((name) => {
+  const sections = FILING_SECTIONS.map((name) => {
     const result = filingProgress.find((r) => r.section_name === name)
     const status = result ? 'complete' : 'pending'
     return { name, status, timestamp: result?.timestamp, success: result?.success }
@@ -24,7 +36,7 @@ export function FilingTimeline() {
 
   // The first non-complete is in_progress
   const firstPendingIdx = sections.findIndex((s) => s.status === 'pending')
-  if (firstPendingIdx >= 0 && filingProgress.length < TAX_SECTIONS.length) {
+  if (firstPendingIdx >= 0 && filingProgress.length < FILING_SECTIONS.length) {
     sections[firstPendingIdx] = { ...sections[firstPendingIdx], status: 'in_progress' }
   }
 

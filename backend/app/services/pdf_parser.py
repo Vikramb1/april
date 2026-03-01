@@ -11,19 +11,34 @@ Identify the form type and return a JSON object with:
 - form_type: string (e.g. "W-2", "1099-DIV", "1099-INT", "1099-NEC", "1099-B", or "1099-CONSOLIDATED" for consolidated statements)
 - fields: object containing extracted summary field values
 
-For a W-2, extract:
-  employer_name, ein, wages, federal_withheld, ss_withheld, medicare_withheld,
-  state_withheld, state_wages, local_withheld, box12_code, box12_amount
+For a W-2, extract ALL of the following (use null for missing fields):
+  employer_name, ein,
+  employer_address, employer_city, employer_state, employer_zip,
+  employee_name,
+  employee_address, employee_city, employee_state, employee_zip,
+  wages (Box 1), federal_tax_withheld (Box 2),
+  social_security_wages (Box 3), social_security_tax_withheld (Box 4),
+  medicare_wages (Box 5), medicare_tax_withheld (Box 6),
+  social_security_tips (Box 7), allocated_tips (Box 8),
+  dependent_care_benefits (Box 10), nonqualified_plans (Box 11),
+  box12_code1, box12_amount1, box12_code2, box12_amount2,
+  statutory_employee (Box 13, boolean), retirement_plan (Box 13, boolean), third_party_sick_pay (Box 13, boolean),
+  box14_other (Box 14),
+  state (Box 15), state_wages (Box 16), state_tax_withheld (Box 17),
+  local_wages (Box 18), local_tax (Box 19), locality_name (Box 20)
 
 For a 1099 (any type), extract only the TOP-LEVEL SUMMARY totals:
-  payer_name, payer_tin, federal_withheld, and the key box totals.
+  payer_name, payer_tin, federal_tax_withheld, and the key box totals.
   For 1099-DIV: total_ordinary_dividends, qualified_dividends, total_capital_gain_distributions
   For 1099-INT: interest_income
   For 1099-B: total_proceeds, total_cost_basis, total_realized_gain_loss
+  For 1099-NEC: amount
   For 1099-MISC: other_income, substitute_payments
   For consolidated forms, include summary fields from each sub-form section.
+  Also include an "amount" field with the primary total amount for the form.
 
 DO NOT include per-transaction detail rows. Only totals/summaries.
+All monetary values should be numbers (not strings). Omit null fields.
 Return ONLY valid JSON. No markdown, no explanation, no comments.
 """
 

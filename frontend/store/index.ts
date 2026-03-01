@@ -127,6 +127,16 @@ export const useStore = create<AppState>()(
         })
 
         set((state) => {
+          // Deduplicate: skip if we already have this section_complete event
+          if (event.type === 'section_complete' && event.section) {
+            const alreadyHave = state.filingProgress.find((r) => r.section_name === event.section)
+            if (alreadyHave) return state
+          }
+          if (event.type === 'complete') {
+            const alreadyDone = state.filingLog.some((l) => l.message.startsWith('Filing completed'))
+            if (alreadyDone) return state
+          }
+
           const log: FilingLogEntry = {
             time,
             message:
@@ -139,14 +149,11 @@ export const useStore = create<AppState>()(
 
           let newProgress = [...state.filingProgress]
           if (event.type === 'section_complete' && event.section) {
-            const existing = newProgress.find((r) => r.section_name === event.section)
-            if (!existing) {
-              newProgress.push({
-                section_name: event.section,
-                success: event.success ?? false,
-                timestamp: event.timestamp,
-              })
-            }
+            newProgress.push({
+              section_name: event.section,
+              success: event.success ?? false,
+              timestamp: event.timestamp,
+            })
           }
 
           const newPhase =
@@ -217,6 +224,8 @@ export const useStore = create<AppState>()(
         taxData: state.taxData,
         percentComplete: state.percentComplete,
         visitedSections: state.visitedSections,
+        filingProgress: state.filingProgress,
+        filingLog: state.filingLog,
       }),
     }
   )
