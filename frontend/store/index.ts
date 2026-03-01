@@ -57,7 +57,7 @@ export const useStore = create<AppState>()(
       userEmail: '',
       phase: 'collecting',
 
-      activeSection: 'Personal Information',
+      activeSection: 'personal-info',
       activeYear: '2025',
 
       messages: [],

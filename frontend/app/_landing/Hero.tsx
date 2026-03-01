@@ -254,7 +254,7 @@ export function Hero() {
           marginBottom: 52,
         }}
       >
-        <span>~10 min to file</span>
+        <span>&lt;1 min setup</span>
         <span style={{ color: "#1B4332" }}>·</span>
         <span>99.2% accuracy</span>
         <span style={{ color: "#1B4332" }}>·</span>

@@ -32,16 +32,7 @@
           "label": "Jr., Sr., III",
           "type": "select",
           "required": false,
-          "options": [
-            "(blank)",
-            "JR",
-            "SR",
-            "II",
-            "III",
-            "IV",
-            "V",
-            "VI"
-          ]
+          "options": ["(blank)", "JR", "SR", "II", "III", "IV", "V", "VI"]
         },
         {
           "id": "tp_address",
@@ -176,50 +167,35 @@
           "label": "Will you be claimed as a dependent on someone else's return?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         },
         {
           "id": "tp_pres_elec_y",
           "label": "Presidential Election Campaign Fund - Do you want $3 to go to this fund?",
           "type": "radio",
           "required": false,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         },
         {
           "id": "tp_blind",
           "label": "Were you blind on 12/31/2024?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         },
         {
           "id": "tp_deceased",
           "label": "Did you pass away in 2024?",
           "type": "radio",
           "required": false,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         },
         {
           "id": "tp_nonresident_alien",
           "label": "Are you a Nonresident Alien?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         }
       ]
     },
@@ -264,10 +240,7 @@
           "label": "Do you have an Identity Protection PIN from the IRS?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         }
       ]
     },
@@ -325,10 +298,7 @@
           "label": "Employer Address Type",
           "type": "select",
           "required": false,
-          "options": [
-            "U.S. Address",
-            "Foreign Address"
-          ]
+          "options": ["U.S. Address", "Foreign Address"]
         },
         {
           "id": "emp_address",
@@ -425,10 +395,7 @@
           "label": "Employee Address Type",
           "type": "select",
           "required": false,
-          "options": [
-            "U.S. Address",
-            "Foreign Address"
-          ]
+          "options": ["U.S. Address", "Foreign Address"]
         },
         {
           "id": "p_address",
@@ -864,10 +831,7 @@
           "label": "Is this a corrected W-2 from your employer? (not common)",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         }
       ]
     },
@@ -882,20 +846,14 @@
           "label": "Do you have any tip income from ACME CORP included in the wages shown in Box 1?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         },
         {
           "id": "is_overtime_received",
           "label": "Were any of the wages on this W-2 for overtime?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         }
       ]
     },
@@ -926,10 +884,7 @@
           "label": "Did you receive, sell, exchange, or otherwise dispose of any cryptocurrency during 2025?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ]
+          "options": ["Yes", "No"]
         }
       ]
     },
@@ -1027,10 +982,7 @@
           "label": "Did you have health insurance from the Marketplace (Form 1095-A)?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ],
+          "options": ["Yes", "No"],
           "notes": "From healthcare.gov or a similar state marketplace. Forms 1095-B and 1095-C are informational only."
         }
       ]
@@ -1086,10 +1038,7 @@
           "label": "Do you want to answer a few more questions to see if we can increase your refund?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Maximize my refund",
-            "Skip and finish filing"
-          ],
+          "options": ["Maximize my refund", "Skip and finish filing"],
           "notes": "Two options with explanatory text: 'Maximize my refund' - 'I want to make sure I haven't missed any refund. (Included for free)' | 'Skip and finish filing' - 'I'm ready to move on - my taxes are simple.'"
         }
       ]
@@ -1121,10 +1070,7 @@
           "label": "Was Texas your state of residence on December 31, 2025?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ],
+          "options": ["Yes", "No"],
           "notes": "Radio button IDs: is_res_state-1 (Yes), is_res_state-2 (No). 'Yes' pre-selected based on address from Page 1 (Austin, TX)."
         }
       ]
@@ -1140,10 +1086,7 @@
           "label": "Did you live in Texas all year?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ],
+          "options": ["Yes", "No"],
           "notes": "Radio button IDs: is_full_year-1 (Yes), is_full_year-2 (No). 'Yes' pre-selected."
         }
       ]
@@ -1159,10 +1102,7 @@
           "label": "Did you make money in any states other than Texas during 2025?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ],
+          "options": ["Yes", "No"],
           "notes": "Radio button IDs: is_other_states-1 (Yes), is_other_states-2 (No). 'No' pre-selected. Asks about income from other states (work, rental property, business). Per baseline (single W-2 from Texas employer), selecting 'No'."
         }
       ]
@@ -1230,10 +1170,7 @@
           "label": "Do you want to split your refund into more than one bank account?",
           "type": "radio",
           "required": true,
-          "options": [
-            "Yes",
-            "No"
-          ],
+          "options": ["Yes", "No"],
           "notes": "Radio button IDs: is_multiple_deposit-1 (Yes), is_multiple_deposit-2 (No). 'No' pre-selected. Field appeared after selecting 'Direct deposit to your bank account'.",
           "depends_on": {
             "refund_type": "D"
@@ -1260,10 +1197,7 @@
           "label": "Account Type:",
           "type": "select",
           "required": true,
-          "options": [
-            "CHECKING",
-            "SAVINGS"
-          ]
+          "options": ["CHECKING", "SAVINGS"]
         },
         {
           "id": "rtn",
@@ -1325,11 +1259,7 @@
           "label": "Which phone number do you want sent to the IRS and state Department of Revenue (if applicable) with your tax return?",
           "type": "radio",
           "required": true,
-          "options": [
-            "510-556-3830",
-            "Other",
-            "None"
-          ],
+          "options": ["510-556-3830", "Other", "None"],
           "notes": "Radio button IDs: phone_option-1 (510-556-3830 - from Page 1), phone_option-O (Other - to enter different number), phone_option-N (None - pre-selected). IRS and state will use this number if they need to call regarding tax return."
         }
       ]

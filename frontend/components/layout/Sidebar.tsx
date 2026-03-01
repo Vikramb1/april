@@ -6,17 +6,17 @@ import { useShallow } from "zustand/react/shallow";
 import { useStore } from "@/store";
 import { api } from "@/lib/api";
 import { ProgressRing } from "@/components/ui/ProgressRing";
-import { TAX_SECTIONS } from "@/lib/types";
+import { SECTION_GROUPS } from "@/lib/types";
 import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from "@/lib/dummyData";
 
-function isSectionComplete(
-  sectionLabel: string,
+function isSubComplete(
+  backendKey: string,
   missingFields: string[],
   percentComplete: number,
 ): boolean {
   if (percentComplete === 0) return false;
   return !missingFields.some((f) =>
-    f.toLowerCase().startsWith(sectionLabel.toLowerCase()),
+    f.toLowerCase().startsWith(backendKey.toLowerCase()),
   );
 }
 
@@ -42,15 +42,16 @@ export function Sidebar() {
   );
 
   const [confirmReset, setConfirmReset] = useState(false);
+  // All groups start expanded; track which are collapsed
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const isPastYear = activeYear !== CURRENT_TAX_YEAR;
   const pastYearRecord = isPastYear ? PAST_YEAR_DATA[activeYear] : null;
   const effectivePercent = isPastYear ? 100 : Math.round(percentComplete);
+  const hasStarted = percentComplete > 0 || isPastYear;
 
   async function handleReset() {
-    if (userId) {
-      await api.resetData(userId).catch(() => {});
-    }
+    if (userId) await api.resetData(userId).catch(() => {});
     resetTaxData();
     setConfirmReset(false);
   }
@@ -70,8 +71,8 @@ export function Sidebar() {
         />
       </div>
 
-      {/* Year label + filed date for past years */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Year label */}
+      <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted font-semibold">
           {activeYear} Return
         </p>
@@ -82,50 +83,89 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Sections */}
+      {/* Section groups */}
       <nav className="flex-1">
-        {TAX_SECTIONS.map((section) => {
-          const isActive = activeSection === section && !isPastYear;
-          const complete =
-            isPastYear ||
-            isSectionComplete(section, missingFields, percentComplete);
-          const hasStarted = percentComplete > 0 || isPastYear;
+        {SECTION_GROUPS.map((group) => {
+          const isOpen = !collapsed[group.key];
+
+          const allComplete = group.subsections.every((sub) =>
+            isPastYear || isSubComplete(sub.backendKey, missingFields, percentComplete),
+          );
+          const anyMissing =
+            !isPastYear &&
+            hasStarted &&
+            group.subsections.some(
+              (sub) => !isSubComplete(sub.backendKey, missingFields, percentComplete),
+            );
 
           return (
-            <button
-              key={section}
-              onClick={() => {
-                if (!isPastYear) setActiveSection(section);
-              }}
-              className={clsx(
-                "flex items-center justify-between w-full text-left py-1.5 px-2 text-[13px] rounded transition-colors mb-0.5",
-                isActive
-                  ? "bg-green text-white font-semibold"
-                  : isPastYear
-                    ? "text-muted cursor-default"
-                    : complete
-                      ? "bg-green-pale text-green cursor-pointer hover:opacity-80"
-                      : "text-ink hover:bg-[#F0EDE6] cursor-pointer",
-              )}
-            >
-              <span>{section}</span>
-
-              {/* Status indicator */}
-              {complete ? (
-                <span
-                  className={clsx(
-                    "text-[11px] font-bold ml-2 flex-shrink-0",
-                    isActive ? "text-white" : "text-green",
+            <div key={group.key} className="mb-1">
+              {/* Group header */}
+              <button
+                onClick={() =>
+                  setCollapsed((c) => ({ ...c, [group.key]: !c[group.key] }))
+                }
+                className="flex items-center justify-between w-full px-1 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                <span>{group.label}</span>
+                <div className="flex items-center gap-1.5">
+                  {hasStarted && allComplete && (
+                    <span className="text-green text-[11px] font-bold">✓</span>
                   )}
-                >
-                  ✓
-                </span>
-              ) : hasStarted ? (
-                <span className="text-[13px] ml-2 flex-shrink-0 text-amber font-bold leading-none">
-                  ⚠
-                </span>
-              ) : null}
-            </button>
+                  {anyMissing && (
+                    <span className="text-amber text-[12px] font-bold leading-none">⚠</span>
+                  )}
+                  <span className="text-[9px] text-muted">{isOpen ? "▲" : "▼"}</span>
+                </div>
+              </button>
+
+              {/* Subsections */}
+              {isOpen && (
+                <div className="ml-2 mb-1">
+                  {group.subsections.map((sub) => {
+                    const isActive = activeSection === sub.key && !isPastYear;
+                    const complete =
+                      isPastYear ||
+                      isSubComplete(sub.backendKey, missingFields, percentComplete);
+
+                    return (
+                      <button
+                        key={sub.key}
+                        onClick={() => {
+                          if (!isPastYear) setActiveSection(sub.key);
+                        }}
+                        className={clsx(
+                          "flex items-center justify-between w-full text-left py-1 px-2 text-[12px] rounded transition-colors mb-0.5",
+                          isActive
+                            ? "bg-green text-white font-semibold"
+                            : isPastYear
+                              ? "text-muted cursor-default"
+                              : complete
+                                ? "bg-green-pale text-green cursor-pointer hover:opacity-80"
+                                : "text-ink hover:bg-[#F0EDE6] cursor-pointer",
+                        )}
+                      >
+                        <span>{sub.label}</span>
+                        {hasStarted && complete ? (
+                          <span
+                            className={clsx(
+                              "text-[10px] font-bold ml-1 flex-shrink-0",
+                              isActive ? "text-white" : "text-green",
+                            )}
+                          >
+                            ✓
+                          </span>
+                        ) : hasStarted && !complete ? (
+                          <span className="text-[11px] ml-1 flex-shrink-0 text-amber font-bold leading-none">
+                            ⚠
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
