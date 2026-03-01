@@ -198,8 +198,9 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
       {!frozenYear && (
         <div className="flex flex-col gap-3">
           <button
-            onClick={handleFile}
-            className="flex items-center justify-center gap-2 w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors cursor-pointer"
+            disabled
+            className="flex items-center justify-center gap-2 w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 opacity-40 blur-[1px] cursor-not-allowed pointer-events-none"
+            title="Coming soon"
           >
             <img src="/freetax.png" alt="FreeTaxUSA" width={20} height={20} className="rounded" />
             File with FreeTaxUSA
