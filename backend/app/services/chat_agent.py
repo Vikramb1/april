@@ -152,14 +152,15 @@ def _build_existing_data_summary(db: Session, user_id: int) -> str:
     return "\n".join(lines) if lines else "No data collected yet — fresh return."
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are April, a warm and expert CPA helping a client file their US federal income tax return for the 2025 tax year through FreeTaxUSA. You have 20+ years of experience and you speak plainly — no jargon.
+SYSTEM_PROMPT_TEMPLATE = """You are April, a warm and expert CPA helping a client file their 2025 US federal tax return. 20+ years of experience. Speak plainly — no jargon.
 
-## YOUR MISSION
-Collect tax data conversationally and save it to the database immediately as the user provides it. Move through sections in order. After every user reply, call save_fields with ALL fields extracted from that reply, then call navigate_to_section, then ask the next question.
+## YOUR JOB
+Handle the CONVERSATION only. Tax data is saved automatically — you do NOT have a save_fields tool.
+Your only tools: navigate_to_section (update the sidebar), request_pdf_upload (ask user to upload PDF).
 
-## SECTION ORDER
+## SECTION ORDER (collect in this order, call navigate_to_section after each)
 1. personal-info — name, SSN, DOB, address, occupation
-2. filing-status — filing status, spouse info if MFJ
+2. filing-status — how they're filing, spouse info if MFJ
 3. dependents — only if they have dependents
 4. identity-protection — only if they have an IRS IP PIN
 5. w2-income — W-2 wages from each employer
@@ -176,65 +177,30 @@ Collect tax data conversationally and save it to the database immediately as the
 16. bank-refund — direct deposit info
 17. review — phone number
 
-## FIELD EXTRACTION — THIS IS THE MOST IMPORTANT RULE
-When a user's reply contains multiple pieces of information, extract ALL of them in a single save_fields call. Never ask for something the user already told you.
-
-Examples:
-- User says "lebron james jr" → save {{first_name: "Lebron", last_name: "James", suffix: "JR"}} in one save_fields call. Do NOT then ask "what's your first name?" — you already have it.
-- User says "123 Main St, Austin TX 78701" → save {{address: "123 Main St", city: "Austin", state: "TX", zip_code: "78701"}} in one call.
-- User says "software engineer, born March 5 1990" → save {{occupation: "Software Engineer", date_of_birth: "1990-03-05"}} in one call.
-- User says "google, $120000 wages, $28000 federal withheld" → save all W-2 fields in one call.
-
-Name parsing rules:
-- "first last" → first_name, last_name
-- "first last jr/sr/ii/iii" → first_name, last_name, suffix (uppercase: JR/SR/II/III)
-- "first middle last" → first_name, middle_initial (first letter), last_name
-- Capitalize first letter of first and last name when saving.
-
-## CONVERSATION FLOW
-Ask one focused question at a time, but save everything the user includes in their answer. Good questions:
-- "What's your full legal name?" (accepts "John Smith" or "John A. Smith Jr." — save all parts)
-- "What's your SSN?" (single sensitive field — ask alone)
-- "What's your date of birth?" (single field — ask alone)
-- "What's your street address, city, state, and zip?" (one natural question covering 4 fields)
-- "What's your occupation?"
-
-Never re-ask for a field the user already provided. If user gave full name "lebron james jr", go straight to SSN next.
+## QUESTION STYLE
+- Ask ONE focused question per turn
+- Accept multi-field answers naturally — do NOT re-ask for anything the user already told you
+- Be warm, efficient. Vary your affirmations — don't always say "Great!"
 
 ## SMART SKIPPING
-- Before dependents: ask "Do you have any children or other dependents on your return?" Skip the section if No.
-- Before identity-protection: ask "Do you have an IRS Identity Protection PIN (IP PIN)?" Skip if No.
-- For deductions: ask "Do you own a home, have significant charitable donations, or large medical bills?" If No, save {{type: "standard"}} and skip itemized questions.
-
-## SAVE_FIELDS SECTION KEYS — use exactly these strings:
-personal-info, filing-status, dependents, identity-protection, w2-income, 1099-income, other-income, deductions, health-insurance, common-credits, other-credits, misc-forms, refund-maximizer, state-residency, state-return, bank-refund, review
-
-## FIELD MANIFEST
-{field_manifest}
+- Before dependents: "Do you have any children or other dependents on your return?" Skip section if No.
+- Before identity-protection: "Do you have an IRS Identity Protection PIN?" Skip section if No.
+- For deductions: ask if they own a home or have large charitable/medical expenses. If No, tell them the standard deduction applies and move to the next section.
 
 ## PDF UPLOADS
 Sections accepting PDF uploads: {pdf_upload_sections}
-When collecting W-2 or 1099 data, offer: "You can type the numbers from your form, or upload the PDF and I'll read it for you." Use request_pdf_upload if they want to upload.
+When collecting W-2 or 1099 data, offer: "You can type the numbers or upload the PDF and I'll read it for you."
 
-## DATA FORMAT
-- SSN: must be exactly 9 digits. Valid: "123456789" or "123-45-6789". Reject anything else — "That doesn't look like a valid SSN (should be 9 digits). Could you re-enter it?"
-- Dates: store as YYYY-MM-DD
-- Dollar amounts: numeric only, no $ signs
-- Filing status: "Single", "Married Filing Jointly", "Married Filing Separately", "Head of Household", "Qualifying Surviving Spouse"
-- Yes/No fields: store as the strings "Yes" or "No"
+## FIRST MESSAGE
+If the user's message is "start" or the very first message, greet them warmly:
 
-## PERSONA
-- Warm, efficient, professional. Vary your responses — don't repeat the same opener.
-- When all sections are done, congratulate warmly and tell them they're ready to file.
-
-## FIRST MESSAGE BEHAVIOR
-If the user's message is "start" or it's the very first message:
-
-"Hi there! I'm April, your personal tax filing assistant. I'll walk you through your 2025 federal tax return — it usually takes about 5 minutes, and even faster if you've filed with us before (under a minute!).
+"Hi there! I'm April, your personal tax filing assistant. I'll walk you through your 2025 federal tax return — usually takes about 5 minutes.
 
 What's your full legal name?"
 
-## ALREADY COLLECTED (skip these — do not re-ask)
+Then call navigate_to_section("personal-info").
+
+## ALREADY COLLECTED (skip — do not re-ask)
 {existing_data_summary}
 """
 
@@ -285,6 +251,82 @@ TOOLS = [
 ]
 
 
+# ── Phase 1: Forced extraction (separate from conversational reply) ──────────
+
+EXTRACT_SYSTEM_PROMPT = """You are a tax data extraction engine. Extract ALL field values from the user's message and save them via save_fields. Do NOT output any text.
+
+Current section being collected: {current_section}
+
+## EXTRACTION RULES
+1. Extract ALL explicit values the user states: names, numbers, dates, addresses, dollar amounts, yes/no answers.
+2. Name parsing:
+   - "john smith" → {{first_name: "John", last_name: "Smith"}}
+   - "john a smith" → {{first_name: "John", middle_initial: "A", last_name: "Smith"}}
+   - "john smith jr" → {{first_name: "John", last_name: "Smith", suffix: "JR"}}
+   - Capitalize first letter of first/last name.
+3. Dates → YYYY-MM-DD (e.g. "March 5, 1990" → "1990-03-05").
+4. Dollar amounts → float, no $ signs (e.g. "$120,000" → 120000).
+5. Yes/No answers: look at the prior assistant question to determine which field to set. Store as "Yes" or "No".
+6. If the user provides NOTHING extractable (e.g. greeting, pure question), call save_fields with fields={{}}.
+7. Call save_fields EXACTLY ONCE. Use section="{current_section}" unless the data clearly belongs elsewhere.
+
+## EXACT FIELD NAMES — use these precisely, no variations:
+personal-info fields:
+  first_name, middle_initial, last_name, suffix, ssn, date_of_birth, occupation,
+  address, apt, city, state, zip_code
+
+filing-status fields:
+  filing_status (values: "Single", "Married Filing Jointly", "Married Filing Separately", "Head of Household", "Qualifying Surviving Spouse")
+  spouse_first_name, spouse_last_name, spouse_ssn, spouse_dob
+
+w2-income fields:
+  employer_name, wages, federal_withheld, social_security_wages, ss_withheld,
+  medicare_wages, medicare_withheld, employer_state, state_wages, state_withheld
+
+1099-income fields:
+  form_type (e.g. "NEC", "INT", "DIV", "B"), payer_name, amount
+
+other-income fields:
+  has_cryptocurrency, has_investments, investment_income, has_unemployment,
+  unemployment_amount, has_social_security, social_security_amount,
+  has_retirement_income, retirement_income
+
+deductions fields:
+  type ("standard" or "itemized"), mortgage_interest, charitable_cash,
+  medical_expenses, property_taxes
+
+bank-refund fields:
+  routing (routing number), account (account number), bank_account_type
+
+DO NOT use alternate names like "social_security_number" (use "ssn"), "birth_date" (use "date_of_birth"), "employer" (use "employer_name"), etc.
+"""
+
+EXTRACT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "save_fields",
+        "description": "Save extracted tax field values to the database",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "section": {
+                    "type": "string",
+                    "description": "Section key (e.g. 'personal-info', 'w2-income')",
+                },
+                "fields": {
+                    "type": "object",
+                    "description": "Extracted field key-value pairs. Empty object if nothing to extract.",
+                },
+            },
+            "required": ["section", "fields"],
+        },
+    },
+}
+
+# Phase 2 tools — no save_fields (that's handled in Phase 1)
+TOOLS_REPLY = [t for t in TOOLS if t["function"]["name"] != "save_fields"]
+
+
 def _save_fields_to_db(db: Session, user_id: int, section: str, fields: dict):
     """Route collected fields to the correct DB table/column based on section key."""
 
@@ -315,15 +357,24 @@ def _save_fields_to_db(db: Session, user_id: int, section: str, fields: dict):
 
         # Normalize common field name variations the model might use
         _field_aliases = {
-            "first": "first_name", "fname": "first_name",
-            "last": "last_name", "lname": "last_name", "surname": "last_name",
-            "middle": "middle_initial", "middle_name": "middle_initial",
+            # Name
+            "first": "first_name", "fname": "first_name", "given_name": "first_name",
+            "last": "last_name", "lname": "last_name", "surname": "last_name", "family_name": "last_name",
+            "middle": "middle_initial", "middle_name": "middle_initial", "mi": "middle_initial",
+            # SSN
+            "social_security_number": "ssn", "social_security": "ssn", "ss_number": "ssn",
+            "sin": "ssn", "tax_id": "ssn",
+            # DOB
             "dob": "date_of_birth", "birthday": "date_of_birth", "birth_date": "date_of_birth",
-            "zip": "zip_code", "postal_code": "zip_code",
+            "date_of_birth": "date_of_birth",
+            # Address
             "street": "address", "street_address": "address",
-            "apt_number": "apt", "apartment": "apt",
-            "job": "occupation", "profession": "occupation",
-            "phone": "phone_option",
+            "apt_number": "apt", "apartment": "apt", "unit": "apt",
+            "zip": "zip_code", "postal_code": "zip_code", "zipcode": "zip_code",
+            # Job
+            "job": "occupation", "profession": "occupation", "title": "occupation",
+            # Phone
+            "phone": "phone_option", "phone_number": "phone_option",
         }
         normalized = {}
         for k, v in fields.items():
@@ -551,53 +602,92 @@ async def run_chat_turn(
     user_message: str,
 ) -> dict:
     """
-    Process one user message. Returns:
-      {reply, request_pdf_upload, pdf_upload_reason, session_status, navigate_to_section}
+    Two-phase processing:
+      Phase 1 — Force save_fields to extract any fields from the user message.
+      Phase 2 — Generate conversational reply (navigate_to_section + request_pdf_upload only).
     """
     # Persist user message
     db.add(ChatMessage(session_id=session.id, role="user", content=user_message))
     db.commit()
 
-    # Build conversation history from DB
+    # Build full conversation history (includes the message we just persisted)
     history = db.query(ChatMessage).filter_by(session_id=session.id).order_by(ChatMessage.id).all()
 
-    # Build user context to filter fields to only what's relevant
-    user_data = _build_user_data(db, session.user_id)
-    field_manifest = get_field_manifest_text(user_data if user_data else None)
+    client = OpenAI(api_key=settings.openai_api_key)
+    current_section = session.current_section or "personal-info"
+    fields_were_saved = False
+
+    # ── Phase 1: Forced extraction ────────────────────────────────────────────
+    # Find the last assistant message for context (helps map yes/no to the right field)
+    last_assistant_content = None
+    for msg in history:
+        if msg.role == "assistant":
+            last_assistant_content = msg.content
+
+    extract_messages = [
+        {
+            "role": "system",
+            "content": EXTRACT_SYSTEM_PROMPT.format(current_section=current_section),
+        },
+    ]
+    if last_assistant_content:
+        extract_messages.append({"role": "assistant", "content": last_assistant_content})
+    extract_messages.append({"role": "user", "content": user_message})
+
+    try:
+        extract_response = client.chat.completions.create(
+            model=MODEL,
+            max_completion_tokens=512,
+            messages=extract_messages,
+            tools=[EXTRACT_TOOL],
+            tool_choice={"type": "function", "function": {"name": "save_fields"}},
+        )
+        extract_msg = extract_response.choices[0].message
+        if extract_msg.tool_calls:
+            for tc in extract_msg.tool_calls:
+                if tc.function.name == "save_fields":
+                    args = json.loads(tc.function.arguments)
+                    section_key = args.get("section", current_section)
+                    # Model sometimes puts fields at top level instead of nested
+                    fields_data = args.get("fields") or {
+                        k: v for k, v in args.items() if k != "section"
+                    }
+                    logger.info("Phase1 extract: section=%s fields=%s", section_key, fields_data)
+                    if fields_data:  # skip if nothing was extracted
+                        _save_fields_to_db(db, session.user_id, section_key, fields_data)
+                        fields_were_saved = True
+    except Exception as exc:
+        logger.warning("Phase 1 extraction failed: %s", exc)
+
+    # ── Phase 2: Conversational reply ─────────────────────────────────────────
     pdf_sections = ", ".join(get_pdf_upload_sections())
     existing_data_summary = _build_existing_data_summary(db, session.user_id)
     system = SYSTEM_PROMPT_TEMPLATE.format(
-        field_manifest=field_manifest,
         pdf_upload_sections=pdf_sections,
         existing_data_summary=existing_data_summary,
     )
 
-    # System prompt as first message, then full chat history
     messages = [{"role": "system", "content": system}]
     messages += [{"role": m.role, "content": m.content} for m in history]
-
-    client = OpenAI(api_key=settings.openai_api_key)
 
     request_pdf_upload = False
     pdf_upload_reason = None
     assistant_text = ""
     navigate_to_section_value = None
-    fields_were_saved = False
 
-    # Agentic loop: keep running until the model stops using tools
+    # Agentic loop — navigate_to_section and request_pdf_upload only (no save_fields)
     while True:
         response = client.chat.completions.create(
             model=MODEL,
             max_completion_tokens=2048,
             messages=messages,
-            tools=TOOLS,
+            tools=TOOLS_REPLY,
             tool_choice="auto",
         )
 
         message = response.choices[0].message
         finish_reason = response.choices[0].finish_reason
 
-        # Collect any text content from this turn
         if message.content:
             assistant_text += message.content
 
@@ -605,7 +695,6 @@ async def run_chat_turn(
             break
 
         if finish_reason == "tool_calls" and message.tool_calls:
-            # Append assistant message (with tool_calls) to history
             messages.append({
                 "role": "assistant",
                 "content": message.content,
@@ -613,48 +702,29 @@ async def run_chat_turn(
                     {
                         "id": tc.id,
                         "type": "function",
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        },
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                     }
                     for tc in message.tool_calls
                 ],
             })
 
-            # Process each tool call and append results
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
                 tool_input = json.loads(tool_call.function.arguments)
 
-                if tool_name == "save_fields":
-                    section_key = tool_input.get("section", "")
-                    # Model sometimes sends a flat dict instead of nested "fields"
-                    fields_data = tool_input.get("fields") or {
-                        k: v for k, v in tool_input.items() if k != "section"
-                    }
-                    logger.info("save_fields: section=%s fields=%s", section_key, fields_data)
-                    if section_key and fields_data:
-                        _save_fields_to_db(db, session.user_id, section_key, fields_data)
-                        fields_were_saved = True
-                        result_content = "Fields saved successfully."
-                    else:
-                        result_content = f"save_fields called with unexpected args: {tool_input}"
-
-                elif tool_name == "navigate_to_section":
+                if tool_name == "navigate_to_section":
                     navigate_to_section_value = tool_input["section"]
                     session.current_section = tool_input["section"]
                     db.commit()
-                    result_content = f"Navigation set to '{tool_input['section']}'."
-
-                elif tool_name == "mark_section_complete":
-                    # Legacy no-op kept for backwards compatibility
-                    result_content = "ok"
+                    result_content = f"Navigated to '{tool_input['section']}'."
 
                 elif tool_name == "request_pdf_upload":
                     request_pdf_upload = True
                     pdf_upload_reason = tool_input["reason"]
                     result_content = "PDF upload requested."
+
+                elif tool_name == "mark_section_complete":
+                    result_content = "ok"
 
                 else:
                     result_content = f"Unknown tool: {tool_name}"
@@ -667,16 +737,15 @@ async def run_chat_turn(
 
             continue
 
-        # Any other finish reason — break
         break
 
-    # Persist final assistant reply
+    # Persist assistant reply
     if assistant_text:
         db.add(ChatMessage(session_id=session.id, role="assistant", content=assistant_text))
         db.commit()
 
-    # Build snapshot of current DB state so frontend can update UI directly
-    snapshot = _build_snapshot(db, session.user_id) if fields_were_saved else None
+    # Always build snapshot so the frontend stays in sync with DB after every turn
+    snapshot = _build_snapshot(db, session.user_id)
 
     return {
         "reply": assistant_text,
