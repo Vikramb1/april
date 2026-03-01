@@ -231,6 +231,7 @@ export interface MiscInfo {
   has_foreign_accounts?: boolean
   has_foreign_assets?: boolean
   refund_maximizer?: string        // 'maximize' | 'skip'
+  has_dependents?: string          // 'Yes' | 'No'
 }
 
 // Pages 27-29 — State residency

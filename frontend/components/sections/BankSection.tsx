@@ -142,7 +142,11 @@ export function BankSection() {
               {(['Yes', 'No'] as const).map((opt) => (
                 <button
                   key={opt}
-                  onClick={() => update({ bank_is_foreign: opt === 'Yes' })}
+                  onClick={() => {
+                  const cur = tr.bank_is_foreign
+                  const active = (cur === true && opt === 'Yes') || (cur === false && opt === 'No')
+                  update({ bank_is_foreign: active ? undefined : opt === 'Yes' })
+                }}
                   className={clsx(
                     'rounded-full px-3 py-1 text-[12px] font-medium transition-colors border cursor-pointer',
                     (tr.bank_is_foreign ? 'Yes' : tr.bank_is_foreign === false ? 'No' : '') === opt
@@ -164,7 +168,7 @@ export function BankSection() {
                 {(['Yes', 'No'] as const).map((opt) => (
                   <button
                     key={opt}
-                    onClick={() => update({ is_multiple_deposit: opt })}
+                    onClick={() => update({ is_multiple_deposit: tr.is_multiple_deposit === opt ? undefined : opt })}
                     className={clsx(
                       'rounded-full px-3 py-1 text-[12px] font-medium transition-colors border cursor-pointer',
                       tr.is_multiple_deposit === opt
@@ -183,7 +187,7 @@ export function BankSection() {
 
       {refundType === 'paper_check' && (
         <div className="p-4 bg-amber/10 border border-amber rounded-xl">
-          <p className="text-[13px] font-semibold text-amber-dark mb-1">Allow 4–6 weeks for delivery</p>
+          <p className="text-[13px] font-semibold text-amber mb-1">Allow 4–6 weeks for delivery</p>
           <p className="text-[12px] text-ink leading-relaxed">
             Your check will be mailed to the address on your return. Make sure your address in
             Personal Info is correct.
@@ -192,9 +196,9 @@ export function BankSection() {
       )}
 
       {refundType === 'go2bank' && (
-        <div className="p-4 bg-cream border border-hairline rounded-xl">
-          <p className="text-[13px] font-semibold text-ink mb-1">GO2bank Debit Card</p>
-          <p className="text-[12px] text-muted leading-relaxed">
+        <div className="p-4 bg-amber-pale border border-amber rounded-xl">
+          <p className="text-[13px] font-semibold text-amber mb-1">GO2bank Debit Card</p>
+          <p className="text-[12px] text-ink leading-relaxed">
             A debit card will be mailed to your address. Funds are typically available within 21 days.
             No bank account required.
           </p>

@@ -85,7 +85,7 @@ export function RefundMaximizerSection() {
 
       {misc.refund_maximizer === 'maximize' && (
         <div className="mt-4 p-4 bg-amber/10 border border-amber rounded-xl">
-          <p className="text-[13px] font-semibold text-amber-dark mb-1">Refund Maximizer selected</p>
+          <p className="text-[13px] font-semibold text-amber mb-1">Refund Maximizer selected</p>
           <p className="text-[12px] text-ink leading-relaxed">
             April will perform a final review of your deductions and credits before submitting.
             You will see a summary of any additional savings found.

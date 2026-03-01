@@ -29,8 +29,8 @@ export function StateReturnSection() {
     return (
       <div>
         <h2 className="text-[18px] font-bold text-ink mb-1">State Return</h2>
-        <div className="mt-4 p-4 bg-cream border border-hairline rounded-xl">
-          <p className="text-[13px] text-muted leading-relaxed">
+        <div className="mt-4 p-4 bg-amber-pale border border-amber rounded-xl">
+          <p className="text-[13px] text-amber leading-relaxed">
             Based on your residency answers, you may not need to file a state return for{' '}
             {stateCode || 'this state'}. If you earned income in another state, check that
             state&apos;s requirements.
@@ -83,8 +83,8 @@ export function StateReturnSection() {
         </p>
       </div>
 
-      <div className="p-3 bg-cream border border-hairline rounded-xl">
-        <p className="text-[12px] text-muted leading-relaxed">
+      <div className="p-3 bg-amber-pale border border-amber rounded-xl">
+        <p className="text-[12px] text-amber leading-relaxed">
           State tax calculations are estimates. Your actual state tax depends on state-specific
           deductions, credits, and rates not shown here.
         </p>

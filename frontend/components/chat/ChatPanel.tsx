@@ -121,7 +121,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
   const inputDisabled = isTyping || phase === 'filing' || isPastYear
 
   return (
-    <aside className="w-[28%] bg-white border-l border-hairline flex flex-col relative">
+    <aside className="w-full h-full bg-white border-l border-hairline flex flex-col relative">
       {/* Header */}
       <div className="px-4 py-3 border-b border-hairline flex items-center gap-2 flex-shrink-0">
         <span className="text-base font-bold text-ink">April</span>
@@ -138,7 +138,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 flex flex-col gap-4">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}

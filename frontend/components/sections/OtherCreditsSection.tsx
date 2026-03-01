@@ -15,8 +15,8 @@ function SectionHeading({ title }: { title: string }) {
 interface ToggleRowProps {
   label: string
   description: string
-  on: boolean
-  onToggle: (v: boolean) => void
+  on: boolean | undefined
+  onToggle: (v: boolean | undefined) => void
   amountLabel?: string
   amount?: number
   onAmount?: (v: number | undefined) => void
@@ -31,11 +31,14 @@ function ToggleRow({
   amount,
   onAmount,
 }: ToggleRowProps) {
+  // Which pill is active: 'Yes' if on===true, 'No' if on===false, none if undefined
+  const activeOpt = on === true ? 'Yes' : on === false ? 'No' : null
+
   return (
     <div
       className={clsx(
         'border rounded-xl p-3 mb-2 transition-colors',
-        on ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+        on === true ? 'border-green bg-green-pale' : 'border-hairline bg-white',
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -47,10 +50,13 @@ function ToggleRow({
           {(['Yes', 'No'] as const).map((opt) => (
             <button
               key={opt}
-              onClick={() => onToggle(opt === 'Yes')}
+              onClick={() => {
+                // Clicking active pill deselects; otherwise set true/false
+                onToggle(activeOpt === opt ? undefined : opt === 'Yes')
+              }}
               className={clsx(
                 'px-2.5 py-0.5 text-[11px] font-medium rounded-full border transition-colors cursor-pointer',
-                (on ? 'Yes' : 'No') === opt
+                activeOpt === opt
                   ? 'bg-green text-white border-green'
                   : 'border-hairline text-muted hover:border-green hover:text-ink',
               )}
@@ -60,7 +66,7 @@ function ToggleRow({
           ))}
         </div>
       </div>
-      {on && amountLabel && onAmount && (
+      {on === true && amountLabel && onAmount && (
         <div className="mt-2 pt-2 border-t border-green/20">
           <p className="text-[11px] text-muted mb-0.5">{amountLabel}</p>
           <input
@@ -98,7 +104,7 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Health Savings Account (HSA)"
         description="Contributions to an HSA paired with a high-deductible health plan are tax-deductible."
-        on={!!cred.has_hsa}
+        on={cred.has_hsa}
         onToggle={(v) => update({ has_hsa: v })}
         amountLabel="HSA Contributions"
         amount={cred.hsa_amount}
@@ -107,7 +113,7 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Medical Savings Account (Archer MSA)"
         description="Similar to HSA but for self-employed individuals or small employers with a qualifying HDHP."
-        on={!!cred.has_msa}
+        on={cred.has_msa}
         onToggle={(v) => update({ has_msa: v })}
       />
 
@@ -116,7 +122,7 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Qualified Adoption Expenses"
         description="Credit for qualified adoption expenses, including domestic and foreign adoptions. Up to $16,810 per child (2025)."
-        on={!!cred.has_adoption}
+        on={cred.has_adoption}
         onToggle={(v) => update({ has_adoption: v })}
         amountLabel="Qualifying Adoption Expenses"
         amount={cred.adoption_expenses}
@@ -125,7 +131,7 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Credit for Elderly or Disabled"
         description="Credit for taxpayers age 65 or older, or those permanently and totally disabled, with limited income."
-        on={!!cred.has_elderly}
+        on={cred.has_elderly}
         onToggle={(v) => update({ has_elderly: v })}
       />
 
@@ -134,13 +140,13 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Mortgage Credit Certificate (MCC)"
         description="A certificate issued by state or local government that converts a portion of mortgage interest into a direct tax credit."
-        on={!!cred.has_mcc}
+        on={cred.has_mcc}
         onToggle={(v) => update({ has_mcc: v })}
       />
       <ToggleRow
         label="Clean Vehicle Credit"
         description="Credit for purchasing a new qualifying all-electric, plug-in hybrid, or fuel-cell vehicle. Up to $7,500."
-        on={!!cred.has_clean_vehicle}
+        on={cred.has_clean_vehicle}
         onToggle={(v) => update({ has_clean_vehicle: v })}
         amountLabel="Credit Amount"
         amount={cred.clean_vehicle_amount}
@@ -149,7 +155,7 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Alternative Fuel Vehicle Refueling Property"
         description="Credit for installing alternative fuel infrastructure (EV charger, hydrogen, etc.) at your home or business."
-        on={!!cred.has_alternative_fuel}
+        on={cred.has_alternative_fuel}
         onToggle={(v) => update({ has_alternative_fuel: v })}
       />
 
@@ -158,13 +164,13 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Employee Business Expenses"
         description="Unreimbursed business expenses for Armed Forces reservists, performing artists, or fee-basis government officials."
-        on={!!cred.has_employee_business}
+        on={cred.has_employee_business}
         onToggle={(v) => update({ has_employee_business: v })}
       />
       <ToggleRow
         label="Military Moving Expenses"
         description="Moving expenses for active-duty Armed Forces members relocating pursuant to a military order."
-        on={!!cred.has_military_moving}
+        on={cred.has_military_moving}
         onToggle={(v) => update({ has_military_moving: v })}
       />
 
@@ -173,19 +179,19 @@ export function OtherCreditsSection() {
       <ToggleRow
         label="Claim of Right Repayment Credit"
         description="Credit when you repaid income in a later year that was taxed in a prior year under a claim of right."
-        on={!!cred.has_claim_of_right}
+        on={cred.has_claim_of_right}
         onToggle={(v) => update({ has_claim_of_right: v })}
       />
       <ToggleRow
         label="Credit for Prior Year Minimum Tax (AMT)"
         description="Credit for Alternative Minimum Tax paid in a prior year that can now offset regular income tax."
-        on={!!cred.has_prior_year_min_tax}
+        on={cred.has_prior_year_min_tax}
         onToggle={(v) => update({ has_prior_year_min_tax: v })}
       />
       <ToggleRow
         label="Miscellaneous Adjustments to Income"
         description="Other above-the-line adjustments including alimony (pre-2019 divorce decrees), self-employment deductions, etc."
-        on={!!cred.has_misc_adjustments}
+        on={cred.has_misc_adjustments}
         onToggle={(v) => update({ has_misc_adjustments: v })}
       />
     </div>

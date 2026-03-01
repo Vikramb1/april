@@ -172,10 +172,14 @@ export function MiscSection() {
             {(['Yes', 'No'] as const).map((opt) => (
               <button
                 key={opt}
-                onClick={() => update({ has_foreign_accounts: opt === 'Yes' })}
+                onClick={() => {
+                  const cur = misc.has_foreign_accounts
+                  const active = (cur === true && opt === 'Yes') || (cur === false && opt === 'No')
+                  update({ has_foreign_accounts: active ? undefined : opt === 'Yes' })
+                }}
                 className={clsx(
                   'px-3 py-1 text-[12px] font-medium rounded-full border transition-colors cursor-pointer',
-                  (misc.has_foreign_accounts ? 'Yes' : misc.has_foreign_accounts === false ? 'No' : '') === opt
+                  (misc.has_foreign_accounts === true ? 'Yes' : misc.has_foreign_accounts === false ? 'No' : '') === opt
                     ? 'bg-green text-white border-green'
                     : 'border-hairline text-muted hover:border-green hover:text-ink',
                 )}
@@ -206,10 +210,14 @@ export function MiscSection() {
             {(['Yes', 'No'] as const).map((opt) => (
               <button
                 key={opt}
-                onClick={() => update({ has_foreign_assets: opt === 'Yes' })}
+                onClick={() => {
+                  const cur = misc.has_foreign_assets
+                  const active = (cur === true && opt === 'Yes') || (cur === false && opt === 'No')
+                  update({ has_foreign_assets: active ? undefined : opt === 'Yes' })
+                }}
                 className={clsx(
                   'px-3 py-1 text-[12px] font-medium rounded-full border transition-colors cursor-pointer',
-                  (misc.has_foreign_assets ? 'Yes' : misc.has_foreign_assets === false ? 'No' : '') === opt
+                  (misc.has_foreign_assets === true ? 'Yes' : misc.has_foreign_assets === false ? 'No' : '') === opt
                     ? 'bg-green text-white border-green'
                     : 'border-hairline text-muted hover:border-green hover:text-ink',
                 )}
