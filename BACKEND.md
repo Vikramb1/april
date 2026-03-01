@@ -22,6 +22,8 @@ FastAPI backend/
   POST /retry-section          ← retry a single failed section
   GET  /users/{id}/data        ← review all stored tax data
   GET  /filing-stream/{user_id}← SSE stream of per-section filing progress events
+  POST /setup-gusto-profile    ← create browser-use cloud profile for Gusto login
+  POST /fetch-gusto-w2         ← fetch W-2 from Gusto via browser automation
 
 SQLite (april.db)              ← stores all user data and chat history
 ```
@@ -45,6 +47,7 @@ backend/
 │       ├── chat_agent.py        # Claude chat agent with tool-use
 │       ├── pdf_parser.py        # pdfplumber + Claude PDF extraction
 │       ├── browser_agent.py     # browser-use submission agent (CDP)
+│       ├── gusto_agent.py       # browser-use Cloud SDK agent for Gusto W-2 fetch
 │       └── field_loader.py      # load/query freetaxusa_fields.json
 ├── scripts/
 │   └── scan_freetaxusa.py       # one-time scanner (walks FreeTaxUSA with dummy data)
@@ -102,7 +105,13 @@ backend/
 - Supports individual section retry via `run_section()`
 - Returns per-section `{section_name, success, error}` results
 
-### 6. FastAPI Routes (`app/main.py`)
+### 6. Gusto Agent (`app/services/gusto_agent.py`)
+- Uses browser-use Cloud SDK (`browser-use-sdk`) — runs in a cloud-hosted browser, not local Chrome
+- `create_gusto_profile(name)` — creates a persistent browser profile, opens Gusto login for user to authenticate
+- `fetch_w2_pdf(profile_id)` — reuses an authenticated profile to navigate Gusto and download the most recent W-2 PDF
+- Downloaded PDF is passed through the existing `parse_tax_pdf()` pipeline and saved as a W2Form record
+
+### 7. FastAPI Routes (`app/main.py`)
 - `POST /users` — idempotent user creation by email
 - `POST /sessions` — creates a new chat session
 - `POST /chat` — processes one chat turn, returns reply + optional PDF upload flag
@@ -112,8 +121,10 @@ backend/
 - `POST /retry-section` — retries one named section
 - `GET /users/{id}/data` — returns all stored tax data as JSON
 - `GET /filing-stream/{user_id}` — SSE stream of `section_complete` and `complete` events
+- `POST /setup-gusto-profile` — creates a browser-use cloud profile for Gusto; user authenticates via `live_url`
+- `POST /fetch-gusto-w2` — uses saved profile to fetch W-2 from Gusto, parse it, and save to DB
 
-### 7. SSE Queue (`app/queues.py`)
+### 8. SSE Queue (`app/queues.py`)
 - `filing_queues: dict[int, asyncio.Queue]` — one queue per active filing user
 - `browser_agent.py` pushes events; `main.py` /filing-stream reads them
 - Separated into its own module to avoid circular imports
@@ -143,6 +154,8 @@ Set in `backend/.env` (copy from `.env.example`):
 ANTHROPIC_API_KEY=sk-ant-...
 DATABASE_URL=sqlite:///./april.db
 CHROME_CDP_URL=http://localhost:9222
+BROWSER_USE_API_KEY=...              # browser-use cloud SDK key (for Gusto W-2 fetch)
+GUSTO_PROFILE_ID=...                 # optional; set after first /setup-gusto-profile call
 ```
 
 ---

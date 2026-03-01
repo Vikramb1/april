@@ -81,3 +81,38 @@ class UserDataResponse(BaseModel):
     form_1099s: list[dict[str, Any]] = []
     deductions: Optional[dict[str, Any]] = None
     credits: Optional[dict[str, Any]] = None
+
+
+# ── Gusto W-2 Fetch ──────────────────────────────────────────────────
+class GustoLoginRequest(BaseModel):
+    user_id: int
+
+
+class GustoLoginResponse(BaseModel):
+    profile_id: str
+    session_id: str
+    live_url: str
+    message: str
+
+
+class CompleteGustoLoginRequest(BaseModel):
+    session_id: str
+    profile_id: str
+
+
+class CompleteGustoLoginResponse(BaseModel):
+    success: bool
+    output: str
+    profile_id: str
+
+
+class FetchGustoW2Request(BaseModel):
+    user_id: int
+    session_id: str
+
+
+class FetchGustoW2Response(BaseModel):
+    form_type: str
+    extracted_fields: dict[str, Any]
+    saved: bool
+    w2_id: int

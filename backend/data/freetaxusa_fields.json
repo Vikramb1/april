@@ -940,8 +940,423 @@
       "page_order": 13,
       "fields": [],
       "notes": "Summary/navigation page showing all income categories with amounts. Total Income: $75,000 (Wages $75,000, all others $0). Links to each income type for editing. No form input fields on this page."
+    },
+    {
+      "page_title": "Continue with a Pro on your side",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 14,
+      "fields": [],
+      "notes": "Promotional/upsell page for Pro Support ($44.99). Similar to Page 5 Deluxe upsell. No form input fields. Includes features: Access to Tax Pro, Live Screen Share, ProCheck Final Review, Personal Tax Advice, Phone Support, 7-Year Tax File Storage. Has 'Add Pro Support' and 'Continue' buttons."
+    },
+    {
+      "page_title": "We've got your income",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 15,
+      "fields": [],
+      "notes": "Transition/congratulation page between Income and Deductions sections. Shows 'Now let's maximize your refund!' and 'We've got you covered with the new tax changes.' No form input fields. Navigation buttons: 'Continue to Deductions' and 'Previous Page'. Federal Refund calculated: $4,045."
+    },
+    {
+      "page_title": "Do you have any of these deductions?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Deductions",
+      "page_order": 16,
+      "fields": [
+        {
+          "id": "is_enter_home_0",
+          "label": "Homeowner (Form 1098, mortgage interest, property taxes, etc.)",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_donation_1",
+          "label": "Made a donation (Money, clothing, furniture, etc.)",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_medical_2",
+          "label": "Out-of-pocket medical expenses",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_tax_paid_3",
+          "label": "Taxes paid (State income tax, sales tax, etc.)",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_inv_4",
+          "label": "Investment interest paid",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_casualty_5",
+          "label": "Disaster casualty and thefts (Hurricane, fire, theft, accident, etc.)",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_enter_other_6",
+          "label": "Other itemized deductions",
+          "type": "checkbox",
+          "required": false
+        }
+      ],
+      "notes": "Itemized deductions selection page. Per baseline instructions (Standard Deduction), leaving all boxes unchecked and clicking Save and Continue."
+    },
+    {
+      "page_title": "The standard deduction is best for you",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Deductions",
+      "page_order": 17,
+      "fields": [],
+      "notes": "Confirmation/decision page showing Standard Deduction of $15,750 automatically selected after leaving all itemized deduction checkboxes unchecked on Page 16. Informational page with no form input fields. Shows: 'You're eligible for a Standard Deduction of $15,750! Most people take the Standard Deduction, so you're in good company.' Has button to 'See my standard and itemized deductions' for comparison (not needed for baseline). Navigation buttons: 'Save and Continue' and 'Previous Page'."
+    },
+    {
+      "page_title": "Did you have health insurance from the Marketplace?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Credits",
+      "page_order": 18,
+      "fields": [
+        {
+          "id": "is_temp_ptc_or_reconcile",
+          "label": "Did you have health insurance from the Marketplace (Form 1095-A)?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "notes": "From healthcare.gov or a similar state marketplace. Forms 1095-B and 1095-C are informational only."
+        }
+      ]
+    },
+    {
+      "page_title": "Common Deductions and Credits",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Credits",
+      "page_order": 19,
+      "fields": [],
+      "notes": "Navigation/selection page showing common deductions and credits with Edit/Add buttons for: IRA Contributions, College Tuition Expenses (Form 1098-T), Student Loan Interest (Form 1098-E), Teacher Expenses, Earned Income Credit (EIC) with view/download form option, New Car Loan Interest Deduction, Home Energy Credit, Child Care Credit. No form input fields on this page. Per baseline instructions (skip all credits), not clicking any Edit/Add buttons and proceeding with Continue button."
+    },
+    {
+      "page_title": "Other Deductions and Credits",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Credits",
+      "page_order": 20,
+      "fields": [],
+      "notes": "Navigation/selection page showing 13 additional deductions and credits with Add buttons: Health Savings Account (HSA), Medical Savings Account (MSA), Qualified Adoption Expenses, Credit for Elderly or Disabled, Mortgage Credit Certificate (MCC), Clean Vehicle Credit, Alternative Fuel Vehicle Refueling Property Credit, Nontaxable Fuel Usage Credit, Investment Credit, Employee Business Expenses, Military Moving Expenses, Claim of Right Repayment Credit, Credit for Prior Year Minimum Tax, Miscellaneous Adjustments to Income. Per baseline instructions, skipping all by not clicking Add buttons and proceeding with Continue. No form input fields on this page."
+    },
+    {
+      "page_title": "Your 2025 Deductions and Credits Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Credits",
+      "page_order": 21,
+      "fields": [],
+      "notes": "Summary/review page showing all deductions and credits. Total Deductions: $15,750 (Standard Deduction $15,750 + all other deductions $0). Total Credits: $0 (all credits skipped per baseline). Contains navigation buttons to edit each section (Standard or Itemized Deductions, Tips Deduction, Overtime Deduction, Car Loan Interest Deduction, Educator Expenses, IRA Deduction, Student Loan Interest, HSA Deduction, Military Moving Expenses, Self-Employment Tax Deduction, Self-Employed SEP Deduction, Self-Employed Health Insurance Deduction, Early Withdrawal of Savings Penalty Deduction, Employee Business Expenses, Alimony Paid, Other Adjustments, Child Tax Credit, Additional Child Tax Credit, Earned Income Credit, Child Care Credit, Education Credit, Retirement Savings Credit, Home Energy Credit, Foreign Tax Credit, Elderly Credit, Clean Vehicle Credit). No form input fields on this page."
+    },
+    {
+      "page_title": "We're making great progress",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Miscellaneous",
+      "page_order": 22,
+      "fields": [],
+      "notes": "Promotional/upsell page for Pro Support ($44.99). Similar to Pages 5 and 14. Message: 'Let's finish up your federal return. Maximize your refund with answers from a Pro.' Features: Tax Pro questions, ProCheck final review. No form input fields. Has 'Add Pro Support', 'Learn More', 'Continue to Miscellaneous', and 'Previous Page' buttons."
+    },
+    {
+      "page_title": "Miscellaneous Forms and Topics",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Miscellaneous",
+      "page_order": 23,
+      "fields": [],
+      "notes": "Navigation page for uncommon forms and topics. Message: 'These items are uncommon, and most people do NOT need them.' Categories include: Payments (2025 Estimated Tax Payments, Extension Payment, Apply Refund to Next Year, 2026 Estimated Tax Payments), Personal (Identity Protection PIN, Paid Preparer, Third Party Designee, IRS Language Preference, IRS Alternative Media Preference), Income (Foreign Accounts and Trusts, Foreign Financial Assets), Other Taxes (loading). Each item has an 'Add' button but no form input fields on this page. Per baseline instructions, not adding any of these uncommon items."
+    },
+    {
+      "page_title": "Refund Maximizer",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Miscellaneous",
+      "page_order": 24,
+      "fields": [
+        {
+          "id": "maximizer_choice",
+          "label": "Do you want to answer a few more questions to see if we can increase your refund?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Maximize my refund",
+            "Skip and finish filing"
+          ],
+          "notes": "Two options with explanatory text: 'Maximize my refund' - 'I want to make sure I haven't missed any refund. (Included for free)' | 'Skip and finish filing' - 'I'm ready to move on - my taxes are simple.'"
+        }
+      ]
+    },
+    {
+      "page_title": "Federal Tax Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Summary",
+      "page_order": 25,
+      "fields": [],
+      "notes": "Federal Tax Summary/review page displaying calculated tax breakdown. Shows Total Income ($75,000), Adjustments ($0), AGI ($75,000), Deductions ($15,750 Standard), Taxable Income ($59,250), Total Tax ($7,955), Total Credits ($0), and resulting Federal Refund ($4,045). No form input fields - purely informational summary table. Includes link 'How do the recent tax changes affect my 2025 taxes?' Navigation expected at bottom after scrolling."
+    },
+    {
+      "page_title": "Look how far you've come!",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Summary",
+      "page_order": 26,
+      "fields": [],
+      "notes": "Congratulatory/transition page showing federal tax completion. Message: 'Your federal taxes look good!' Shows completed items with checkmarks: Biggest refund, Accuracy guarantee, Personal info, W-2, Standard Deduction, E-file, Roll forward info. Federal Refund: $4,045. Navigation: 'Continue to State Return' and 'Previous Page' buttons. No form input fields."
+    },
+    {
+      "page_title": "Did you live in Texas?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "State",
+      "page_order": 27,
+      "fields": [
+        {
+          "id": "is_res_state",
+          "label": "Was Texas your state of residence on December 31, 2025?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "notes": "Radio button IDs: is_res_state-1 (Yes), is_res_state-2 (No). 'Yes' pre-selected based on address from Page 1 (Austin, TX)."
+        }
+      ]
+    },
+    {
+      "page_title": "Did you live there all year?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "State",
+      "page_order": 28,
+      "fields": [
+        {
+          "id": "is_full_year",
+          "label": "Did you live in Texas all year?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "notes": "Radio button IDs: is_full_year-1 (Yes), is_full_year-2 (No). 'Yes' pre-selected."
+        }
+      ]
+    },
+    {
+      "page_title": "Where did you make money?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "State",
+      "page_order": 29,
+      "fields": [
+        {
+          "id": "is_other_states",
+          "label": "Did you make money in any states other than Texas during 2025?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "notes": "Radio button IDs: is_other_states-1 (Yes), is_other_states-2 (No). 'No' pre-selected. Asks about income from other states (work, rental property, business). Per baseline (single W-2 from Texas employer), selecting 'No'."
+        }
+      ]
+    },
+    {
+      "page_title": "Your State Tax Returns",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "State",
+      "page_order": 30,
+      "fields": [],
+      "notes": "Informational/decision page confirming Texas doesn't require state income tax return. Message: 'Good news! Texas doesn't require you to file a state income tax return. You told us that you didn't make money or live in any other states during the year. If you don't need to file a state return, simply continue to file your federal return.' Option to 'Add a State Return' (not needed for baseline). No form input fields. Navigation: 'Continue' and 'Previous Page' buttons."
+    },
+    {
+      "page_title": "We're almost there! Just a few final steps to file your taxes.",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "State",
+      "page_order": 31,
+      "fields": [],
+      "notes": "State section completion transition page. Shows federal refund $4,045 with government building icon. Message: 'We're almost there! Just a few final steps to file your taxes.' Navigation buttons: 'Continue to Final Steps' and 'Previous Page'. No form input fields. Gateway to Final Steps section which contains Bank/Refund Info."
+    },
+    {
+      "page_title": "Unlock more benefits",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Final Steps",
+      "page_order": 32,
+      "fields": [],
+      "notes": "Upsell page for Support Plans and Printed Copy options. Shows: Audit Defense ($19.99), Deluxe Support ($7.99), Pro Support ($44.99), Printed copy ($8.96), Bound copy ($17.96). No form input fields. Per baseline instructions, skipping all extras and clicking Continue to proceed to Bank/Refund Info section."
+    },
+    {
+      "page_title": "Don't forget Audit Defense",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Final Steps",
+      "page_order": 33,
+      "fields": [],
+      "notes": "Upsell page for Audit Defense ($19.99). Features: Personal Audit Defense Team (licensed expert help with IRS/state letters), Lasting Peace of Mind (3 years coverage), IRS and State Support (both covered), All this and more (tax debt relief, tax identity theft defense, denied tax credits help). No form input fields. Per baseline instructions, skipping all extras and clicking Continue to proceed to Bank/Refund Info section."
+    },
+    {
+      "page_title": "Order Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Final Steps",
+      "page_order": 34,
+      "fields": [],
+      "notes": "Order Summary page showing 3-step process: 1) Order Products (current), 2) Review Tax Return, 3) Submit Tax Return. Confirms 'Federal Return: Free' and 'TOTAL AMOUNT DUE: $0.00'. No form input fields. Navigation buttons: 'Continue' and 'Previous Page'. Gateway to Review/Submit process."
+    },
+    {
+      "page_title": "How would you like your $4,045 federal refund?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Bank/Refund Info",
+      "page_order": 35,
+      "fields": [
+        {
+          "id": "refund_type",
+          "label": "How would you like your $4,045 federal refund?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Direct deposit to your bank account",
+            "Get your refund up to 5 days early on a new debit card - Direct deposit to a new GO2bank\u2122 account",
+            "Slowest option: paper check in the mail - The IRS will hold your refund for at least 6 weeks"
+          ],
+          "notes": "Radio button IDs: refund_type-D (Direct deposit), refund_type-P (GO2bank prepaid), refund_type-C (Paper check). Selected 'Direct deposit' per dummy data (bank_routing, bank_account, bank_account_type=checking)."
+        },
+        {
+          "id": "is_multiple_deposit",
+          "label": "Do you want to split your refund into more than one bank account?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "notes": "Radio button IDs: is_multiple_deposit-1 (Yes), is_multiple_deposit-2 (No). 'No' pre-selected. Field appeared after selecting 'Direct deposit to your bank account'.",
+          "depends_on": {
+            "refund_type": "D"
+          }
+        }
+      ],
+      "notes": "Page 35 in Final Steps section. Step 1 of 3: Order Products. Asks user to choose refund delivery method. Per baseline dummy data (bank_routing, bank_account, bank_account_type=checking), selecting 'Direct deposit to your bank account' which reveals is_multiple_deposit field. Selecting 'No' for split refund. Next page will contain actual bank account entry fields (routing number, account number, account type)."
+    },
+    {
+      "page_title": "Let's get your direct deposit info",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Bank/Refund Info",
+      "page_order": 36,
+      "fields": [
+        {
+          "id": "account_nickname",
+          "label": "Account Nickname: (optional) Example: Sam's Checking Account",
+          "type": "text",
+          "required": false,
+          "validation": "maxlength=100"
+        },
+        {
+          "id": "account_type",
+          "label": "Account Type:",
+          "type": "select",
+          "required": true,
+          "options": [
+            "CHECKING",
+            "SAVINGS"
+          ]
+        },
+        {
+          "id": "rtn",
+          "label": "Routing Transit Number:",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=9",
+          "notes": "Nine-digit routing number from bottom of check"
+        },
+        {
+          "id": "rtn2",
+          "label": "Confirm Routing Transit Number:",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=9",
+          "notes": "Must match rtn field"
+        },
+        {
+          "id": "account_num_e",
+          "label": "Account Number:",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=17",
+          "notes": "Account number from bottom of check"
+        },
+        {
+          "id": "account_num2",
+          "label": "Confirm Account Number:",
+          "type": "text",
+          "required": true,
+          "validation": "maxlength=17",
+          "notes": "Must match account_num_e field"
+        },
+        {
+          "id": "is_outside_us_0",
+          "label": "Foreign bank account?",
+          "type": "checkbox",
+          "required": false
+        }
+      ],
+      "notes": "Bank Account Details page for $4,045 federal refund direct deposit. Shows example check with routing and account number locations. 3-step process: 1) Order Products (current), 2) Review Tax Return, 3) Submit Tax Return. Per dummy data: routing=021000021, account=123456789, type=checking."
+    },
+    {
+      "page_title": "Double check your refund info",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Bank/Refund Info",
+      "page_order": 37,
+      "fields": [],
+      "notes": "Confirmation/review page showing bank account details entered on Page 36. Displays: Account Type: CHECKING, Routing Transit Number: 021000021, Account Number: 123456789 (masked in actual display). Shows 3-step process: 1) Order Products (current), 2) Review Tax Return, 3) Submit Tax Return. Link to go back to 'Federal Direct Deposit of Refund' screen if changes needed. No form input fields on this page."
+    },
+    {
+      "page_title": "Send phone number to IRS?",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Review",
+      "page_order": 38,
+      "fields": [
+        {
+          "id": "phone_option",
+          "label": "Which phone number do you want sent to the IRS and state Department of Revenue (if applicable) with your tax return?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "510-556-3830",
+            "Other",
+            "None"
+          ],
+          "notes": "Radio button IDs: phone_option-1 (510-556-3830 - from Page 1), phone_option-O (Other - to enter different number), phone_option-N (None - pre-selected). IRS and state will use this number if they need to call regarding tax return."
+        }
+      ]
+    },
+    {
+      "page_title": "Let's double-check your return info",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Review",
+      "page_order": 39,
+      "fields": [],
+      "notes": "Validation/error page showing Federal Tax Return Alerts. Displays errors blocking progress: 1) YELLOW WARNING - Invalid Employer Identification Number (EIN) in Box B of Form W-2 - dummy EIN 12-3456789 flagged as invalid. 2) RED ERROR - Invalid Social Security Number for John - dummy SSN 123-45-6789 flagged as invalid. Shows 3-step progress: 1) Order Products, 2) Review Tax Return (current), 3) Submit Tax Return. Red error blocks further progress. No form input fields on this page - pure validation/error display. Natural stopping point as dummy data required by user instructions triggers validation errors.",
+      "validation_errors_encountered": [
+        {
+          "type": "yellow_warning",
+          "field_source": "w2_ein (Page 8)",
+          "error": "Invalid Employer Identification Number",
+          "description": "Dummy EIN 12-3456789 entered in Box B of Form W-2 is invalid per IRS validation"
+        },
+        {
+          "type": "red_error",
+          "field_source": "ssn (Page 1)",
+          "error": "Invalid Social Security Number",
+          "description": "Dummy SSN 123-45-6789 entered for John Smith is invalid per IRS validation"
+        }
+      ]
     }
   ],
   "pdf_upload_sections": [],
-  "scanned_at": "2026-03-01T02:48:50.916850+00:00"
+  "scanned_at": "2026-03-01T03:30:00+00:00"
 }

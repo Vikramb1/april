@@ -17,10 +17,13 @@ from app.schemas.api import (
     SubmitTaxesRequest, SubmitTaxesResponse, SectionResult,
     RetrySectionRequest,
     UserDataResponse,
+    GustoLoginRequest, GustoLoginResponse,
+    FetchGustoW2Request, FetchGustoW2Response,
 )
 from app.services.chat_agent import run_chat_turn
 from app.services.pdf_parser import parse_tax_pdf
 from app.services.browser_agent import run_submission, run_section
+from app.services.gusto_agent import start_gusto_login, fetch_w2_from_session
 from app.services.field_loader import get_all_required_fields
 
 
@@ -226,4 +229,67 @@ def get_user_data(user_id: int, db: Session = Depends(get_db)):
         form_1099s=[row_to_dict(f) for f in f1099s],
         deductions=row_to_dict(ded),
         credits=row_to_dict(cred),
+    )
+
+
+# ── POST /gusto-login ────────────────────────────────────────────────
+@app.post("/gusto-login", response_model=GustoLoginResponse)
+async def gusto_login(body: GustoLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = await start_gusto_login()
+
+    return GustoLoginResponse(
+        profile_id=result["profile_id"],
+        session_id=result["session_id"],
+        live_url=result["live_url"],
+        message=(
+            "Agent logged in with your credentials. "
+            "Open live_url to enter your MFA code. "
+            "Once you're on the dashboard, call POST /complete-gusto-login."
+        ),
+    )
+
+
+# ── POST /fetch-gusto-w2 ─────────────────────────────────────────────
+@app.post("/fetch-gusto-w2", response_model=FetchGustoW2Response)
+async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db)):
+    """Fetch W-2 from Gusto using an active logged-in session.
+
+    Call /gusto-login first, enter MFA, then call this with the same session_id.
+    """
+    user = db.query(User).filter_by(id=body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        pdf_bytes = await fetch_w2_from_session(body.session_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    extracted = await parse_tax_pdf(pdf_bytes)
+    form_type = extracted.get("form_type", "unknown")
+    fields = extracted.get("fields", extracted)
+
+    if form_type != "W-2":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Expected W-2 but parsed as {form_type}",
+        )
+
+    w2 = W2Form(user_id=body.user_id)
+    for k, v in fields.items():
+        if hasattr(w2, k):
+            setattr(w2, k, v)
+    db.add(w2)
+    db.commit()
+    db.refresh(w2)
+
+    return FetchGustoW2Response(
+        form_type=form_type,
+        extracted_fields=fields,
+        saved=True,
+        w2_id=w2.id,
     )
