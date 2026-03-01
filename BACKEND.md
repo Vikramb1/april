@@ -73,32 +73,49 @@ backend/
 
 ### 2. SQLite Models (`app/database/models.py`)
 
-All tables include `extra_data JSON` to store the full frontend payload verbatim (keys match frontend TypeScript interfaces). Explicit columns are synced for backend queries; `extra_data` wins on read.
+All tables include a JSON blob column to store the full frontend payload verbatim. Explicit columns are synced for backend queries; the JSON blob wins on read via `_row_to_dict()`.
 
-| Table | Explicit Columns | extra_data |
+| Table | Explicit columns | JSON blob column | Stores |
+|---|---|---|---|
+| `users` | id, email, created_at | — | — |
+| `chat_sessions` | id, user_id, status, current_section | — | — |
+| `chat_messages` | id, session_id, role, content | — | — |
+| `tax_returns` | first_name, last_name, ssn, dob, address, occupation, filing_status, direct_deposit_routing, direct_deposit_account | `extra_data` | Full `TaxReturnData` payload |
+| `tax_returns` (extra cols) | other_income JSON, dependents JSON, misc_info JSON, state_info JSON | — | OtherIncomeData, DependentData[], MiscInfoData, StateInfoData |
+| `w2_forms` | employer_name, ein, wages, federal_withheld, ss_withheld, medicare_withheld, state_withheld, state_wages, local_withheld, box12_code, box12_amount | `extra_data` | Full `W2FormData` payload (all 44 box fields) |
+| `form_1099s` | form_type, payer_name, payer_tin, amount, federal_withheld | `raw_json` | Full `Form1099Data` payload |
+| `deductions` | type, mortgage_interest, charitable_cash, student_loan_interest | `other_json` | Full `DeductionsData` payload |
+| `credits` | child_tax_credit_count, education_credit_type, eitc_qualifying_children | `other_json` | Full `CreditsData` payload |
+
+### 3. Pydantic Sub-models (`app/schemas/api.py`)
+
+Typed models mirror the frontend TypeScript interfaces exactly. All fields are `Optional` with `extra='ignore'` to drop internal DB keys on round-trip.
+
+| Pydantic model | Frontend type | Key fields |
 |---|---|---|
-| `users` | id, email, created_at | — |
-| `chat_sessions` | id, user_id, status, current_section | — |
-| `chat_messages` | id, session_id, role, content | — |
-| `tax_returns` | first_name, last_name, ssn, dob, address, occupation, filing_status, direct_deposit_routing/account | All frontend TaxReturn fields |
-| `w2_forms` | employer_name, ein, wages, federal/ss/medicare/state_withheld, state_wages, local_withheld, box12_code/amount | All 44 W-2 box fields |
-| `form_1099s` | form_type, payer_name, payer_tin, amount, federal_withheld, raw_json | — |
-| `deductions` | type, mortgage_interest, charitable_cash, student_loan_interest, other_json | — |
-| `credits` | child_tax_credit_count, education_credit_type, eitc_qualifying_children, other_json | — |
+| `TaxReturnData` | `TaxReturn` | first_name, middle_initial, last_name, suffix, ssn, date_of_birth, occupation, address, apt, city, state, zip_code, zip_plus_4, addr_changed, filing_status, claimed_as_dependent, presidential_fund, blind, deceased, nonresident_alien, identity_protection_pin[_number], spouse_*, refund_type, is_multiple_deposit, bank_*, bank_is_foreign, phone_option, refund_amount, tax_owed |
+| `W2FormData` | `W2Form` | employer_*/employee_* address fields, wages, federal/ss/medicare_tax_withheld, box12_code[1-2]/amount[1-2], statutory_employee, retirement_plan, third_party_sick_pay, state_wages, state/local_tax_withheld, w2_type, is_corrected, has_tip_income, has_overtime |
+| `Form1099Data` | `Form1099` | form_type, payer_name, amount |
+| `DeductionsData` | `Deductions` | standard/itemized_deduction, 7 has_* category flags, mortgage_interest, property_taxes, cash/noncash_donations, medical_expenses, state_local_*_tax, investment_interest, casualty_loss, other_itemized |
+| `CreditsData` | `Credits` | has_marketplace_insurance, has_ira/ira_*, has_college_tuition/*, has_student_loan/*, has_teacher_expenses/*, has_eic/eic_*, has_car_loan/*, has_home_energy/*, has_child_care/*, has_hsa/*, has_adoption/*, has_clean_vehicle/*, + 8 other has_* flags |
+| `OtherIncomeData` | `OtherIncome` | has_cryptocurrency, has_investments/investment_income, has_unemployment/*, has_social_security/*, has_retirement_income/*, has_state_refund/*, has_capital_loss_carryover, has_business_rental, business_income, rental_income |
+| `DependentData` | `Dependent` | first_name, last_name, ssn, date_of_birth, relationship, months_lived |
+| `MiscInfoData` | `MiscInfo` | has_estimated_payments, estimated_q[1-4], extension_payment, apply_refund_next_year, next_year_amount, has_foreign_accounts, has_foreign_assets, refund_maximizer, has_dependents |
+| `StateInfoData` | `StateInfo` | is_state_resident, is_full_year_resident, has_other_state_income |
 
-### 3. Data Sync Flow
+### 4. Data Sync Flow
 - **Write**: `PUT /users/{id}/data` — upserts TaxReturn (creates if none), replaces W2/1099 list wholesale, upserts Deduction/Credit. Stores full payload in `extra_data`. Also syncs known columns for browser agent compatibility.
 - **Read**: `GET /users/{id}/data` — calls `_row_to_dict()` which merges `{**explicit_cols, **extra_data}` so frontend edits always override chat-agent writes to explicit columns.
 - **Reset**: `DELETE /users/{id}/data` — hard-deletes all tax records; user row and chat session remain intact.
 
-### 4. PDF Parser (`app/services/pdf_parser.py`)
+### 5. PDF Parser (`app/services/pdf_parser.py`)
 - Receives PDF bytes via `POST /upload-pdf`
 - Extracts text with `pdfplumber`
 - Sends extracted text to Claude with a structured extraction prompt
 - Returns typed dict mapped to DB columns
 - Persists to the appropriate table (W2Form or Form1099)
 
-### 5. Chat Agent (`app/services/chat_agent.py`)
+### 6. Chat Agent (`app/services/chat_agent.py`)
 - Stateful Claude conversation using the Anthropic SDK (not LangChain)
 - Loads full field manifest and chat history from DB on each turn
 - Uses three Claude tools:
@@ -108,7 +125,7 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 - Runs an agentic loop until Claude stops using tools
 - Returns `{reply, request_pdf_upload, pdf_upload_reason, session_status}`
 
-### 6. Browser Submission Agent (`app/services/browser_agent.py`)
+### 7. Browser Submission Agent (`app/services/browser_agent.py`)
 - Uses browser-use `Agent` + `Browser(cdp_url=...)` connected to Chrome
 - Runs one agent per section for reliability
 - Sections: Personal Information → Filing Status → W-2 Income → 1099 Income → Deductions → Credits → Bank/Refund → Review
@@ -117,13 +134,13 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 - Supports individual section retry via `run_section()`
 - Returns per-section `{section_name, success, error}` results
 
-### 7. Gusto Agent (`app/services/gusto_agent.py`)
+### 8. Gusto Agent (`app/services/gusto_agent.py`)
 - Uses browser-use Cloud SDK (`browser-use-sdk`) — runs in a cloud-hosted browser, not local Chrome
 - `create_gusto_profile(name)` — creates a persistent browser profile, opens Gusto login for user to authenticate
 - `fetch_w2_pdf(profile_id)` — reuses an authenticated profile to navigate Gusto and download the most recent W-2 PDF
 - Downloaded PDF is passed through the existing `parse_tax_pdf()` pipeline and saved as a W2Form record
 
-### 8. FastAPI Routes (`app/main.py`)
+### 9. FastAPI Routes (`app/main.py`)
 
 | Method | Route | Description |
 |---|---|---|
@@ -141,7 +158,9 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 | POST | /gusto-login | Creates browser-use cloud profile for Gusto; user authenticates via live_url |
 | POST | /fetch-gusto-w2 | Uses saved profile to fetch W-2 from Gusto, parse, and save to DB |
 
-### 9. Schemas (`app/schemas/api.py`)
+### 10. Schemas (`app/schemas/api.py`)
+
+Request/response models:
 - `CreateUserRequest`, `UserResponse`
 - `CreateSessionRequest`, `SessionResponse`
 - `ChatRequest`, `ChatResponse`
@@ -149,9 +168,13 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 - `SessionStatusResponse`
 - `SubmitTaxesRequest`, `SubmitTaxesResponse`, `SectionResult`
 - `RetrySectionRequest`
-- `UserDataResponse` — returned by GET and PUT /users/{id}/data
-- `UpdateDataRequest` — body for PUT /users/{id}/data
-- `GustoLoginRequest`, `GustoLoginResponse`, `FetchGustoW2Request`, `FetchGustoW2Response`
+- `UserDataResponse` — returned by GET and PUT /users/{id}/data; uses typed sub-models
+- `UpdateDataRequest` — body for PUT /users/{id}/data; uses typed sub-models
+- `FetchGustoW2Request`, `FetchGustoW2Response`, `FetchFidelity1099Request`, `FetchFidelity1099Response`
+
+Typed sub-models (mirror frontend TypeScript interfaces, `extra='ignore'`):
+- `TaxReturnData`, `W2FormData`, `Form1099Data`, `DeductionsData`, `CreditsData`
+- `OtherIncomeData`, `DependentData`, `MiscInfoData`, `StateInfoData`
 
 ### 10. SSE Queue (`app/queues.py`)
 - `filing_queues: dict[int, asyncio.Queue]` — one queue per active filing user

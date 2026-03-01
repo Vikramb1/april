@@ -70,6 +70,11 @@ class TaxReturn(Base):
     direct_deposit_routing = Column(String, nullable=True)
     direct_deposit_account = Column(String, nullable=True)
     extra_data = Column(JSON, nullable=True)
+    # Supplementary data stored as JSON — avoids separate tables for now, easy to normalize later
+    other_income = Column(JSON, nullable=True)    # OtherIncome dict
+    dependents = Column(JSON, nullable=True)       # list of Dependent dicts
+    misc_info = Column(JSON, nullable=True)        # MiscInfo dict
+    state_info = Column(JSON, nullable=True)       # StateInfo dict
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

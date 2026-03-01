@@ -89,6 +89,10 @@ export const api = {
       form_1099s: Record<string, unknown>[]
       deductions: Record<string, unknown> | null
       credits: Record<string, unknown> | null
+      other_income: Record<string, unknown> | null
+      dependents: Record<string, unknown>[]
+      misc_info: Record<string, unknown> | null
+      state_info: Record<string, unknown> | null
     }>(`/users/${userId}/data`),
 
   updateData: (userId: number, data: {
@@ -97,6 +101,10 @@ export const api = {
     form_1099s?: Record<string, unknown>[]
     deductions?: Record<string, unknown> | null
     credits?: Record<string, unknown> | null
+    other_income?: Record<string, unknown> | null
+    dependents?: Record<string, unknown>[]
+    misc_info?: Record<string, unknown> | null
+    state_info?: Record<string, unknown> | null
   }) =>
     put<{ user_id: number }>(`/users/${userId}/data`, data),
 

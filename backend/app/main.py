@@ -202,6 +202,12 @@ async def retry_section(body: RetrySectionRequest, db: Session = Depends(get_db)
     return SectionResult(**result)
 
 
+# Columns excluded from _row_to_dict — returned separately in UserDataResponse or not at all
+_EXCLUDE_COLS = {
+    'extra_data', 'pdf_data', 'created_at', 'updated_at', 'user_id',
+    'other_income', 'dependents', 'misc_info', 'state_info',  # returned as top-level fields
+}
+
 # Shared helper: merge explicit columns with extra_data (extra_data wins)
 def _row_to_dict(obj):
     if obj is None:
@@ -209,7 +215,7 @@ def _row_to_dict(obj):
     base = {
         c.name: getattr(obj, c.name)
         for c in obj.__table__.columns
-        if c.name not in ('extra_data', 'pdf_data', 'created_at', 'updated_at', 'user_id')
+        if c.name not in _EXCLUDE_COLS
     }
     extra = getattr(obj, 'extra_data', None) or {}
     return {**base, **extra}
@@ -234,8 +240,12 @@ def get_user_data(user_id: int, db: Session = Depends(get_db)):
         tax_return=_row_to_dict(tr),
         w2_forms=[_row_to_dict(w) for w in w2s],
         form_1099s=[_row_to_dict(f) for f in f1099s],
-        deductions=_row_to_dict(ded),
-        credits=_row_to_dict(cred),
+        deductions=ded.other_json if ded else None,
+        credits=cred.other_json if cred else None,
+        other_income=tr.other_income if tr else None,
+        dependents=tr.dependents or [] if tr else [],
+        misc_info=tr.misc_info if tr else None,
+        state_info=tr.state_info if tr else None,
     )
 
 
@@ -349,12 +359,13 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Upsert TaxReturn
+    # Always upsert TaxReturn — it anchors all supplementary JSON fields
+    tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
+    if tr is None:
+        tr = TaxReturn(user_id=user_id)
+        db.add(tr)
+
     if body.tax_return is not None:
-        tr = db.query(TaxReturn).filter_by(user_id=user_id).first()
-        if tr is None:
-            tr = TaxReturn(user_id=user_id)
-            db.add(tr)
         # Sync known explicit columns (backend field name mappings)
         col_map = {
             'first_name': 'first_name',
@@ -368,10 +379,20 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
             'bank_account_number': 'direct_deposit_account',
         }
         for fe_key, db_key in col_map.items():
-            val = body.tax_return.get(fe_key)
+            val = getattr(body.tax_return, fe_key, None)
             if val is not None:
                 setattr(tr, db_key, val)
-        tr.extra_data = body.tax_return
+        tr.extra_data = body.tax_return.model_dump(exclude_none=True)
+
+    # Store supplementary data directly on the TaxReturn row
+    if body.other_income is not None:
+        tr.other_income = body.other_income.model_dump(exclude_none=True)
+    if body.dependents is not None:
+        tr.dependents = [d.model_dump(exclude_none=True) for d in body.dependents]
+    if body.misc_info is not None:
+        tr.misc_info = body.misc_info.model_dump(exclude_none=True)
+    if body.state_info is not None:
+        tr.state_info = body.state_info.model_dump(exclude_none=True)
 
     # Replace W2 forms wholesale
     if body.w2_forms is not None:
@@ -392,10 +413,10 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
                 'box12_amount1': 'box12_amount',
             }
             for fe_key, db_key in w2_col_map.items():
-                val = w2_data.get(fe_key)
+                val = getattr(w2_data, fe_key, None)
                 if val is not None:
                     setattr(w2, db_key, val)
-            w2.extra_data = w2_data
+            w2.extra_data = w2_data.model_dump(exclude_none=True)
             db.add(w2)
 
     # Replace 1099 forms wholesale
@@ -404,12 +425,13 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
         for f_data in body.form_1099s:
             f1099 = Form1099(
                 user_id=user_id,
-                form_type=f_data.get('form_type', 'unknown'),
-                raw_json=f_data,
+                form_type=f_data.form_type or 'unknown',
+                raw_json=f_data.model_dump(exclude_none=True),
             )
-            for k in ('payer_name', 'amount'):
-                if f_data.get(k) is not None:
-                    setattr(f1099, k, f_data[k])
+            if f_data.payer_name is not None:
+                f1099.payer_name = f_data.payer_name
+            if f_data.amount is not None:
+                f1099.amount = f_data.amount
             db.add(f1099)
 
     # Upsert Deduction
@@ -418,7 +440,7 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
         if ded is None:
             ded = Deduction(user_id=user_id)
             db.add(ded)
-        ded.other_json = body.deductions
+        ded.other_json = body.deductions.model_dump(exclude_none=True)
 
     # Upsert Credit
     if body.credits is not None:
@@ -426,7 +448,7 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
         if cred is None:
             cred = Credit(user_id=user_id)
             db.add(cred)
-        cred.other_json = body.credits
+        cred.other_json = body.credits.model_dump(exclude_none=True)
 
     db.commit()
 
@@ -443,8 +465,12 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
         tax_return=_row_to_dict(tr),
         w2_forms=[_row_to_dict(w) for w in w2s],
         form_1099s=[_row_to_dict(f) for f in f1099s],
-        deductions=_row_to_dict(ded),
-        credits=_row_to_dict(cred),
+        deductions=ded.other_json if ded else None,
+        credits=cred.other_json if cred else None,
+        other_income=tr.other_income if tr else None,
+        dependents=tr.dependents or [] if tr else [],
+        misc_info=tr.misc_info if tr else None,
+        state_info=tr.state_info if tr else None,
     )
 
 

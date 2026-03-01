@@ -158,6 +158,10 @@ export default function Dashboard() {
             form_1099s: dbData.form_1099s as import('@/lib/types').Form1099[],
             deductions: dbData.deductions as import('@/lib/types').Deductions ?? undefined,
             credits: dbData.credits as import('@/lib/types').Credits ?? undefined,
+            other_income: dbData.other_income as import('@/lib/types').OtherIncome ?? undefined,
+            dependents: dbData.dependents as import('@/lib/types').Dependent[] ?? [],
+            misc_info: dbData.misc_info as import('@/lib/types').MiscInfo ?? undefined,
+            state_info: dbData.state_info as import('@/lib/types').StateInfo ?? undefined,
           })
         }
 
