@@ -317,18 +317,26 @@ async def fetch_fidelity_1099(body: FetchFidelity1099Request, db: Session = Depe
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+    extracted = await parse_tax_pdf(pdf_bytes)
+    form_type = extracted.get("form_type", "unknown")
+    fields = extracted.get("fields", extracted)
+
     f1099 = Form1099(
         user_id=body.user_id,
-        form_type="1099",
+        form_type=form_type.replace("1099-", ""),
+        raw_json=fields,
         pdf_data=pdf_bytes,
     )
+    for k, v in fields.items():
+        if hasattr(f1099, k) and k not in ("id", "user_id", "created_at", "updated_at", "raw_json", "pdf_data", "form_type"):
+            setattr(f1099, k, v)
     db.add(f1099)
     db.commit()
     db.refresh(f1099)
 
     return FetchFidelity1099Response(
-        form_type="1099",
-        extracted_fields={},
+        form_type=form_type,
+        extracted_fields=fields,
         saved=True,
         form_1099_id=f1099.id,
     )

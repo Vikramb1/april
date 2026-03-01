@@ -5,20 +5,26 @@ import pdfplumber
 
 from app.config import settings
 
-PARSE_SYSTEM_PROMPT = """You are a tax document parser. Extract all fields from the provided tax form text.
+PARSE_SYSTEM_PROMPT = """You are a tax document parser. Extract SUMMARY-LEVEL fields from the provided tax form text.
 
-Identify the form type (W-2, 1099-NEC, 1099-INT, 1099-DIV, or 1099-B) and return a JSON object with:
-- form_type: string (one of: W-2, 1099-NEC, 1099-INT, 1099-DIV, 1099-B)
-- fields: object containing all extracted field values
+Identify the form type and return a JSON object with:
+- form_type: string (e.g. "W-2", "1099-DIV", "1099-INT", "1099-NEC", "1099-B", or "1099-CONSOLIDATED" for consolidated statements)
+- fields: object containing extracted summary field values
 
 For a W-2, extract:
   employer_name, ein, wages, federal_withheld, ss_withheld, medicare_withheld,
   state_withheld, state_wages, local_withheld, box12_code, box12_amount
 
-For a 1099, extract:
-  payer_name, payer_tin, amount, federal_withheld, and any type-specific fields
+For a 1099 (any type), extract only the TOP-LEVEL SUMMARY totals:
+  payer_name, payer_tin, federal_withheld, and the key box totals.
+  For 1099-DIV: total_ordinary_dividends, qualified_dividends, total_capital_gain_distributions
+  For 1099-INT: interest_income
+  For 1099-B: total_proceeds, total_cost_basis, total_realized_gain_loss
+  For 1099-MISC: other_income, substitute_payments
+  For consolidated forms, include summary fields from each sub-form section.
 
-Return ONLY valid JSON. No markdown, no explanation.
+DO NOT include per-transaction detail rows. Only totals/summaries.
+Return ONLY valid JSON. No markdown, no explanation, no comments.
 """
 
 
@@ -34,7 +40,7 @@ async def parse_tax_pdf(pdf_bytes: bytes) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1024,
+        max_tokens=4096,
         system=PARSE_SYSTEM_PROMPT,
         messages=[
             {
