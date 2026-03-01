@@ -1,5 +1,5 @@
 import json
-import anthropic
+from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -7,6 +7,8 @@ from app.database.models import (
     ChatMessage, ChatSession, TaxReturn, W2Form, Form1099, Deduction, Credit
 )
 from app.services.field_loader import get_field_manifest_text, get_pdf_upload_sections
+
+MODEL = "gpt-5.2"
 
 
 def _build_user_data(db: Session, user_id: int) -> dict:
@@ -89,49 +91,58 @@ Rules:
 
 TOOLS = [
     {
-        "name": "save_fields",
-        "description": "Save collected tax fields to the database for a given section.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "section": {
-                    "type": "string",
-                    "description": "The section name (e.g. 'Personal Information', 'W-2 Income')",
+        "type": "function",
+        "function": {
+            "name": "save_fields",
+            "description": "Save collected tax fields to the database for a given section.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "description": "The section name (e.g. 'Personal Information', 'W-2 Income')",
+                    },
+                    "fields": {
+                        "type": "object",
+                        "description": "Key-value pairs of field IDs and their collected values",
+                    },
                 },
-                "fields": {
-                    "type": "object",
-                    "description": "Key-value pairs of field IDs and their collected values",
-                },
+                "required": ["section", "fields"],
             },
-            "required": ["section", "fields"],
         },
     },
     {
-        "name": "mark_section_complete",
-        "description": "Mark a section as fully collected and move to the next.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "section": {
-                    "type": "string",
-                    "description": "The section name to mark complete",
-                }
+        "type": "function",
+        "function": {
+            "name": "mark_section_complete",
+            "description": "Mark a section as fully collected and move to the next.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "description": "The section name to mark complete",
+                    }
+                },
+                "required": ["section"],
             },
-            "required": ["section"],
         },
     },
     {
-        "name": "request_pdf_upload",
-        "description": "Tell the user to upload a PDF for W-2 or 1099 data.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "reason": {
-                    "type": "string",
-                    "description": "Human-readable reason / instruction for the upload",
-                }
+        "type": "function",
+        "function": {
+            "name": "request_pdf_upload",
+            "description": "Tell the user to upload a PDF for W-2 or 1099 data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "Human-readable reason / instruction for the upload",
+                    }
+                },
+                "required": ["reason"],
             },
-            "required": ["reason"],
         },
     },
 ]
@@ -216,7 +227,6 @@ async def run_chat_turn(
 
     # Build conversation history from DB
     history = db.query(ChatMessage).filter_by(session_id=session.id).order_by(ChatMessage.id).all()
-    messages = [{"role": m.role, "content": m.content} for m in history]
 
     # Build user context to filter fields to only what's relevant
     user_data = _build_user_data(db, session.user_id)
@@ -227,45 +237,58 @@ async def run_chat_turn(
         pdf_upload_sections=pdf_sections,
     )
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    # System prompt as first message, then full chat history
+    messages = [{"role": "system", "content": system}]
+    messages += [{"role": m.role, "content": m.content} for m in history]
+
+    client = OpenAI(api_key=settings.openai_api_key)
 
     request_pdf_upload = False
     pdf_upload_reason = None
     assistant_text = ""
 
-    # Agentic loop: keep running until Claude stops using tools
+    # Agentic loop: keep running until the model stops using tools
     while True:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
+        response = client.chat.completions.create(
+            model=MODEL,
             max_tokens=2048,
-            system=system,
-            tools=TOOLS,
             messages=messages,
+            tools=TOOLS,
+            tool_choice="auto",
         )
 
-        # Collect text from this response
-        for block in response.content:
-            if block.type == "text":
-                assistant_text += block.text
+        message = response.choices[0].message
+        finish_reason = response.choices[0].finish_reason
 
-        # Check stop reason
-        if response.stop_reason == "end_turn":
+        # Collect any text content from this turn
+        if message.content:
+            assistant_text += message.content
+
+        if finish_reason == "stop":
             break
 
-        if response.stop_reason == "tool_use":
-            # Append assistant message with all content blocks
+        if finish_reason == "tool_calls" and message.tool_calls:
+            # Append assistant message (with tool_calls) to history
             messages.append({
                 "role": "assistant",
-                "content": [b.model_dump() for b in response.content],
+                "content": message.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in message.tool_calls
+                ],
             })
 
-            tool_results = []
-            for block in response.content:
-                if block.type != "tool_use":
-                    continue
-
-                tool_name = block.name
-                tool_input = block.input
+            # Process each tool call and append results
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_input = json.loads(tool_call.function.arguments)
 
                 if tool_name == "save_fields":
                     _save_fields_to_db(
@@ -289,16 +312,15 @@ async def run_chat_turn(
                 else:
                     result_content = f"Unknown tool: {tool_name}"
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
                     "content": result_content,
                 })
 
-            messages.append({"role": "user", "content": tool_results})
             continue
 
-        # Any other stop reason — break
+        # Any other finish reason — break
         break
 
     # Persist final assistant reply

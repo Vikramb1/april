@@ -116,13 +116,15 @@ Typed models mirror the frontend TypeScript interfaces exactly. All fields are `
 - Persists to the appropriate table (W2Form or Form1099)
 
 ### 6. Chat Agent (`app/services/chat_agent.py`)
-- Stateful Claude conversation using the Anthropic SDK (not LangChain)
+- Stateful OpenAI conversation using the OpenAI Python SDK
+- Model: `gpt-5.2` (set via `MODEL` constant at top of file)
 - Loads full field manifest and chat history from DB on each turn
-- Uses three Claude tools:
+- System prompt injected as the first message in the messages array
+- Uses three OpenAI function-calling tools:
   - `save_fields(section, fields)` — persists collected data to SQLite
   - `mark_section_complete(section)` — advances current_section pointer
   - `request_pdf_upload(reason)` — signals frontend to show upload UI
-- Runs an agentic loop until Claude stops using tools
+- Runs an agentic loop until `finish_reason == "stop"`
 - Returns `{reply, request_pdf_upload, pdf_upload_reason, session_status}`
 
 ### 7. Browser Submission Agent (`app/services/browser_agent.py`)
@@ -203,7 +205,7 @@ State lists include all 50 states + DC, GU, PR, VI, AA, AE, AP (military/territo
 Set in `backend/.env` (copy from `.env.example`):
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-proj-...
 DATABASE_URL=sqlite:///./april.db
 CHROME_CDP_URL=http://localhost:9222
 BROWSER_USE_API_KEY=...              # browser-use cloud SDK key (for Gusto W-2 fetch)

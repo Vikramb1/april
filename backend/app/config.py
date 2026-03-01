@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    anthropic_api_key: str
+    openai_api_key: str
     database_url: str = "sqlite:///./april.db"
     chrome_cdp_url: str = "http://localhost:9222"
     browser_use_api_key: str = ""
