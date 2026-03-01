@@ -49,7 +49,7 @@ export const api = {
   createSession: (userId: number) =>
     post<{ session_id: number; user_id: number; status: string }>('/sessions', { user_id: userId }),
 
-  chat: (sessionId: number, message: string) =>
+  chat: (sessionId: number, message: string, activeSection?: string) =>
     post<{
       reply: string
       request_pdf_upload: boolean
@@ -67,7 +67,7 @@ export const api = {
         misc_info: Record<string, unknown> | null
         state_info: Record<string, unknown> | null
       } | null
-    }>('/chat', { session_id: sessionId, message }),
+    }>('/chat', { session_id: sessionId, message, active_section: activeSection }),
 
   uploadPdf: (sessionId: number, file: File) =>
     postForm<{ form_type: string; extracted_fields: Record<string, unknown>; saved: boolean }>(

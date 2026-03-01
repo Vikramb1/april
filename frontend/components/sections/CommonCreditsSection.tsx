@@ -31,7 +31,7 @@ function CreditCard({ label, description, on, onToggle, children }: CreditCardPr
       <div
         className={clsx(
           'flex items-start gap-3 p-4 cursor-pointer',
-          on ? 'bg-green-pale' : 'bg-white hover:bg-[#F7F5F0]',
+          on ? 'bg-green-pale' : 'hover:bg-[#F7F5F0]',
         )}
         onClick={() => onToggle(!on)}
       >

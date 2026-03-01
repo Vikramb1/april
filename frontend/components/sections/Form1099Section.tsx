@@ -117,7 +117,7 @@ export function Form1099Section() {
       <h2 className="text-[18px] font-bold text-ink mb-4">1099 Income</h2>
 
       {/* Gate question */}
-      <div className="border border-hairline rounded-xl p-4 mb-4 bg-white">
+      <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] font-medium text-ink mb-3">
           Did you receive any 1099 income in 2025?
           <span className="text-red-500 ml-0.5">*</span>

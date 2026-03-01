@@ -27,7 +27,7 @@ function IncomeCard({
     <div
       className={clsx(
         'border rounded-xl p-4 mb-3 transition-colors',
-        toggled ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+        toggled ? 'border-green bg-green-pale' : 'border-hairline',
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -89,7 +89,7 @@ export function OtherIncomeSection() {
       <div
         className={clsx(
           'border rounded-xl p-4 mb-3 transition-colors',
-          oi.has_cryptocurrency === 'Yes' ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+          oi.has_cryptocurrency === 'Yes' ? 'border-green bg-green-pale' : 'border-hairline',
         )}
       >
         <div className="flex items-start justify-between gap-3">

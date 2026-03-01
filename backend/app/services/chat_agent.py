@@ -1,6 +1,7 @@
 import json
 import logging
 import re as _re
+from typing import Optional
 from openai import OpenAI
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,23 @@ _SNAP_W2_RENAMES = {
 # ── Field schema: types, options, and required fields per section ─────────────
 
 _US_STATES = ["AL","AK","AZ","AR","AA","AE","AP","CA","CO","CT","DE","DC","FL","GA","GU","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","PR","RI","SC","SD","TN","TX","UT","VT","VI","VA","WA","WV","WI","WY"]
+
+_STATE_NAME_TO_CODE: dict[str, str] = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY", "washington d.c.": "DC", "washington dc": "DC",
+    "district of columbia": "DC",
+}
 
 FIELD_SCHEMA: dict[str, dict] = {
     "personal-info": {
@@ -237,8 +255,8 @@ FIELD_SCHEMA: dict[str, dict] = {
             "extension_payment":      {"type": "number"},
             "apply_refund_next_year": {"type": "boolean"},
             "next_year_amount":       {"type": "number"},
-            "has_foreign_accounts":   {"type": "radio", "options": ["Yes","No"]},
-            "has_foreign_assets":     {"type": "radio", "options": ["Yes","No"]},
+            "has_foreign_accounts":   {"type": "boolean"},
+            "has_foreign_assets":     {"type": "boolean"},
         },
     },
     "refund-maximizer": {
@@ -340,6 +358,10 @@ def _normalize_value(value, field_meta: dict):
 
     elif ftype == "select":
         raw = str(value).strip()
+        # Full state name → 2-letter abbreviation (e.g. "Texas" → "TX")
+        _lower = raw.lower()
+        if _lower in _STATE_NAME_TO_CODE:
+            raw = _STATE_NAME_TO_CODE[_lower]
 
         def _cmp_s(s: str) -> str:
             return _re.sub(r"[\s_\-]+", " ", s.lower()).strip()
@@ -646,6 +668,7 @@ def _snap_ded(ded) -> dict | None:
     if ded is None:
         return None
     base = {
+        'type': ded.type,
         'cash_donations': ded.charitable_cash,
         'mortgage_interest': ded.mortgage_interest,
         'student_loan_interest': ded.student_loan_interest,
@@ -653,6 +676,9 @@ def _snap_ded(ded) -> dict | None:
     other = ded.other_json or {}
     result = {k: v for k, v in base.items() if v is not None}
     result.update(other)
+    # Derive the frontend gate field from the DB type column
+    if 'has_itemized_deductions' not in result and ded.type:
+        result['has_itemized_deductions'] = 'Yes' if ded.type == 'itemized' else 'No'
     return result
 
 
@@ -743,169 +769,51 @@ def _build_existing_data_summary(db: Session, user_id: int) -> str:
     return "\n".join(lines) if lines else "No data collected yet — fresh return."
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are April, a warm and expert CPA helping a client file their 2025 US federal tax return. 20+ years of experience. Speak plainly — no jargon.
+SYSTEM_PROMPT_TEMPLATE = """You are April, a tax assistant guide for the 2025 US federal tax return.
 
 ## YOUR JOB
-Handle the CONVERSATION only. Tax data is saved automatically — you do NOT have a save_fields tool.
-Your only tools: navigate_to_section (update the sidebar), request_pdf_upload (ask user to upload PDF).
+Respond to what the user said or asked. Tax data is extracted and saved automatically — you do NOT have a save_fields tool.
+Your only tools: navigate_to_section (send user to a page), request_pdf_upload.
 
-## QUESTION STYLE
-- Ask ONE focused question per turn (or a short grouped cluster for closely related items)
-- Accept multi-field answers naturally — do NOT re-ask for anything the user already told you
-- Be warm, efficient. Vary your affirmations — don't always say "Great!"
-- LENIENCY: Always accept whatever the user gives you. If the format is unusual, accept it. If a field is optional and they say "skip" / "N/A" / "I don't know" / "no" → acknowledge, record what you can, move to the next question. Never get stuck demanding a perfect answer.
+## THIS TURN
+{saved_context}
 
-## PDF UPLOADS
-Sections accepting PDF uploads: {pdf_upload_sections}
-When collecting W-2 or 1099 data, offer: "You can type the numbers or upload the PDF and I'll read it for you."
+## USER'S CURRENT PAGE
+{active_section}
 
-## FIRST MESSAGE
-If the user's message is "start" or the very first message, greet them warmly:
-
-"Hi there! I'm April, your personal tax filing assistant. I'll walk you through your 2025 federal tax return — usually takes about 5 minutes.
-
-What's your full legal name?"
-
-Then call navigate_to_section("personal-info").
-
-## ALREADY COLLECTED (skip — do not re-ask)
+## ALREADY IN THEIR RETURN
 {existing_data_summary}
 
-## SECTION QUESTION CHECKLISTS
-Work through EVERY item in the current section's checklist before calling navigate_to_section().
-[R] = Required — must be in the database before you can advance.
-[O] = Optional — ask it, accept ANY answer (even "no"/"skip"), record what you can, then move on.
-Do NOT skip [O] questions — always ask them. Do NOT advance until ALL items are checked off.
+## PDF UPLOADS
+For W-2 or 1099 data: {pdf_upload_sections}. Offer "You can type the numbers or upload the PDF."
 
-### personal-info
-  [R] Full legal name (first + last; offer middle initial / suffix)
-  [R] SSN (9 digits — accept any format, e.g. dashes are fine)
-  [R] Date of birth
-  [R] Home address — street, city, state, zip
-  [O] Occupation / job title
-  [O] Did your address change from last year?
-  [O] Can anyone else claim you as a dependent on their return?
-  [O] Presidential Election Campaign Fund — "Would you like to designate $3 to the presidential campaign fund?"
-  [O] Are you legally blind?
-  [O] Did the taxpayer or spouse pass away in 2025?
-  [O] Are you or your spouse a nonresident alien?
+## WHAT EACH PAGE COVERS (for navigation)
+- personal-info: Name, SSN, date of birth, address, occupation
+- filing-status: Single / MFJ / MFS / HOH / QSS; spouse info for MFJ
+- dependents: Children or other dependents
+- identity-protection: IRS Identity Protection PIN
+- w2-income: W-2 wages from employers
+- 1099-income: 1099 forms (NEC, INT, DIV, B, MISC, R, SSA)
+- other-income: Crypto, investments, unemployment, Social Security, retirement, rental/business
+- deductions: Standard vs. itemized; mortgage, donations, medical, state/local taxes
+- health-insurance: ACA/Marketplace coverage
+- common-credits: IRA, student loan interest, tuition, EIC, child care, home energy, car loan
+- other-credits: HSA, adoption, clean vehicle, MSA, elderly, employee expenses, military moving
+- misc-forms: Estimated tax payments, foreign accounts (FBAR), foreign assets (Form 8938)
+- refund-maximizer: Maximize refund or skip optimizer
+- state-residency: Your state, full/part-year resident, income in other states
+- state-return: State tax details
+- federal-summary: Federal return summary
+- bank-refund: Direct deposit routing/account, paper check
+- review: Phone number, final review
 
-### filing-status
-  [R] Filing status — Single / Married Filing Jointly / Married Filing Separately / Head of Household / Qualifying Surviving Spouse
-  [R if MFJ] Spouse: first name, last name, SSN, date of birth
-
-### dependents  (skip entire section if user says no dependents)
-  [R] For each dependent: first name, last name, SSN, date of birth, relationship, months lived with you
-  After each: "Any other dependents?"
-
-### identity-protection  (skip entire section if user says no IP PIN)
-  [R] Do you have an IRS Identity Protection PIN?
-  [R if Yes] What is the 6-digit IP PIN?
-
-### w2-income  (repeat for each W-2)
-  [R] Employer name
-  [R] Box 1 — Wages
-  [O] Box 2 — Federal income tax withheld
-  [O] Box 3 — Social Security wages / Box 4 — SS tax withheld
-  [O] Box 5 — Medicare wages / Box 6 — Medicare tax withheld
-  [O] Box 15-17 — Employer state, state wages, state tax withheld
-  [O] Boxes 13 — Statutory employee? Retirement plan? Third-party sick pay?
-  After each W-2: "Do you have another W-2?"
-
-### 1099-income  (repeat for each 1099)
-  [R] Payer name
-  [O] Form type (NEC / INT / DIV / B / MISC / R / SSA)
-  [O] Amount
-  [O] Federal income tax withheld
-  After each: "Do you have another 1099?"
-
-### other-income  (ask each; "no" is a valid answer and moves you forward)
-  [R] Did you buy, sell, or trade any cryptocurrency in 2025?
-  [O] Investment income (stocks, bonds, dividends, capital gains)?
-  [O] Unemployment compensation?
-  [O] Social Security benefits?
-  [O] Retirement income (pension, IRA withdrawal, 401k distribution)?
-  [O] Did you receive a state or local tax refund last year?
-  [O] Capital loss carryover from a prior year?
-  [O] Business or rental income?
-
-### deductions
-  [R] Standard deduction or itemized? (Tip: itemized is worth it if they have a mortgage, large donations, or big medical bills)
-  If itemized, ask:
-  [O] Mortgage interest paid?
-  [O] Property taxes?
-  [O] Cash charitable donations? Noncash donations?
-  [O] Medical expenses?
-  [O] State/local income or sales taxes paid?
-  [O] Investment interest expense?
-  [O] Casualty or theft losses?
-  [O] Any other itemized deductions?
-
-### health-insurance
-  [R] Did you have Marketplace (ACA/Obamacare) health insurance in 2025?
-
-### common-credits  (ask each; "no" is fine)
-  [O] Did you contribute to an IRA in 2025? (Traditional or Roth — how much?)
-  [O] Any college tuition or education expenses?
-  [O] Student loan interest paid?
-  [O] Teacher classroom expenses (educators only)?
-  [O] Earned Income Credit — any qualifying children?
-  [O] Car loan interest for an electric or clean vehicle?
-  [O] Home energy improvements (solar, insulation, heat pump, etc.)?
-  [O] Child or dependent care expenses (daycare, after-school)?
-
-### other-credits  (ask each; "no" is fine)
-  [O] HSA (Health Savings Account) contributions?
-  [O] MSA (Medical Savings Account)?
-  [O] Adoption expenses?
-  [O] Elderly or permanently disabled credit?
-  [O] New clean vehicle credit (EV purchase)?
-  [O] Alternative fuel vehicle refueling credit?
-  [O] Mortgage credit certificate?
-  [O] Unreimbursed employee business expenses?
-  [O] Military moving expenses?
-  [O] Claim of right repayment?
-  [O] Prior year alternative minimum tax credit?
-  [O] Other miscellaneous tax adjustments?
-
-### misc-forms  (ask each; "no" is fine)
-  [O] Made estimated federal tax payments in 2025? (If yes: Q1–Q4 amounts)
-  [O] Did you make an extension payment?
-  [O] Apply any refund toward next year's taxes?
-  [O] Do you have foreign bank accounts?
-  [O] Foreign financial assets above the reporting threshold?
-
-### refund-maximizer
-  [R] "Would you like me to maximize your refund, or skip the optimizer?" (maximize / skip)
-
-### state-residency
-  [R] Are you a resident of [state from address]?
-  [O] Were you a full-year resident, or did you move mid-year?
-  [O] Did you earn income in another state?
-
-### state-return
-  No checklist — navigate when ready.
-
-### federal-summary
-  No checklist — navigate when ready.
-
-### bank-refund
-  [R] How would you like to receive your refund — direct deposit, Go2Bank prepaid card, or paper check?
-  [R if direct deposit] Routing number, account number, account type (checking or savings)
-  [O] Is this a foreign bank account?
-  [O] Split the refund across multiple accounts?
-
-### review
-  [O] Best phone number to reach you?
-
-## ADVANCE RULE
-Call navigate_to_section() ONLY when:
-  1. The database says "All required fields for this section are collected." (see status below), AND
-  2. You have gone through every [O] item in the checklist above for the current section.
-If user mentions data for a DIFFERENT section → say "Got it, noted." then return to the current checklist.
-
-## CURRENT SECTION STATUS
-{missing_fields_text}
+## BEHAVIOR RULES
+1. **Data was saved** (see THIS TURN above): Briefly confirm what was saved (e.g. "Got it — I've recorded your mortgage interest of $5,000."). If it was saved to a different page than the user is currently on, call navigate_to_section to take them there.
+2. **User asked about a specific topic** (nothing saved): Find the relevant page, call navigate_to_section, then offer to fill in that item. Example: "Mortgage interest goes under Deductions — let me take you there. Did you pay mortgage interest in 2025?"
+3. **User asked a general tax question**: Answer it concisely. If relevant to a page, navigate there.
+4. **Nothing matches any section**: Say so simply. "I don't see a field for that in your return."
+5. **First message ("start")**: Greet warmly — introduce yourself, say they can type anything or click sections. Do NOT ask any questions. Call navigate_to_section("personal-info").
+6. **Never cold-ask sequential questions** (e.g., "What's your SSN?") unless the user explicitly asks you what information is needed for a section.
 """
 
 TOOLS = [
@@ -957,15 +865,19 @@ TOOLS = [
 
 # ── Phase 1: Forced extraction (separate from conversational reply) ──────────
 
-EXTRACT_SYSTEM_PROMPT = """You are a tax data extraction engine. Extract ALL field values from the user's message and save them via save_fields. Do NOT output any text.
+EXTRACT_SYSTEM_PROMPT = """You are a tax data extraction engine. Extract field values from the user's message and save them via save_fields. Do NOT output any text.
 
-Current section: {current_section}
+Active page (user is currently viewing): {active_section}
+
+## EXTRACTION SCOPE
+{extraction_scope}
+CRITICAL: Do NOT extract or infer values for any field NOT listed above — even if you believe you know the answer from context. Over-extracting causes questions to be silently skipped.
 
 ## FIELD TYPES AND VALID VALUES
 {section_field_hints}
 
 ## RULES
-1. Extract ALL explicit values: names, numbers, dates, addresses, amounts, yes/no answers.
+1. Extract values ONLY for the allowed fields listed above — never infer answers to questions not yet asked.
 2. Names: "john smith jr" → {{first_name: "John", last_name: "Smith", suffix: "JR"}}
 3. Dates → YYYY-MM-DD when possible (e.g. "11172004" → "2004-11-17", "3/5/1990" → "1990-03-05").
    If you cannot reformat a date, extract the raw value anyway — the backend will normalize it.
@@ -976,7 +888,7 @@ Current section: {current_section}
 6. boolean (checkbox) fields → output true or false (NOT "Yes"/"No").
 7. select fields → output EXACT option string from the field list above.
 8. Nothing extractable → call save_fields with fields={{}}.
-9. Call save_fields EXACTLY ONCE using section="{current_section}".
+9. {section_routing_rule}
 
 ## VALIDATION — omit any field whose value fails these checks
 - ssn / spouse_ssn: strip dashes and spaces → must be exactly 9 digits. Skip if not.
@@ -1005,7 +917,7 @@ common-credits: has_ira, ira_amount, ira_type, has_college_tuition, college_tuit
 other-credits: has_hsa, hsa_amount, has_msa, has_adoption, adoption_expenses, has_elderly, has_clean_vehicle, clean_vehicle_amount, has_alternative_fuel, has_mcc, has_employee_business, has_military_moving, has_claim_of_right, has_prior_year_min_tax, has_misc_adjustments
 misc-forms: has_estimated_payments, estimated_q1, estimated_q2, estimated_q3, estimated_q4, extension_payment, apply_refund_next_year, next_year_amount, has_foreign_accounts, has_foreign_assets
 refund-maximizer: refund_maximizer
-state-residency: is_state_resident, is_full_year_resident, has_other_state_income
+state-residency: state, is_state_resident, is_full_year_resident, has_other_state_income
 bank-refund: refund_type, routing, account, bank_account_type, bank_is_foreign, is_multiple_deposit
 identity-protection: identity_protection_pin, identity_protection_pin_number
 review: phone_option
@@ -1168,6 +1080,15 @@ def _save_fields_to_db(db: Session, user_id: int, section: str, fields: dict):
         # Normalize field types
         normalized = _normalize_fields_for_section("personal-info", normalized)
 
+        # Capitalize name fields regardless of how user typed them
+        for _nf in ("first_name", "last_name"):
+            if _nf in normalized and isinstance(normalized[_nf], str) and normalized[_nf]:
+                normalized[_nf] = normalized[_nf].strip().title()
+        if "middle_initial" in normalized and isinstance(normalized["middle_initial"], str) and normalized["middle_initial"]:
+            normalized["middle_initial"] = normalized["middle_initial"].strip()[0].upper()
+        if "suffix" in normalized and isinstance(normalized["suffix"], str) and normalized["suffix"]:
+            normalized["suffix"] = normalized["suffix"].strip().upper()
+
         for k, v in normalized.items():
             if k in _TR_COLUMN_MAP:
                 col = "dob" if k == "date_of_birth" else k
@@ -1291,6 +1212,17 @@ def _save_fields_to_db(db: Session, user_id: int, section: str, fields: dict):
         tr = _get_or_create_tr()
         existing = dict(tr.state_info or {})
         fields = _normalize_fields_for_section(section, fields)
+        # 'state' (2-letter code) belongs to personal-info/extra_data, not state_info
+        if 'state' in fields:
+            ed = dict(tr.extra_data or {})
+            state_val = str(fields.pop('state')).strip()
+            state_lower = state_val.lower()
+            if state_lower in _STATE_NAME_TO_CODE:
+                state_val = _STATE_NAME_TO_CODE[state_lower]  # full name → "CA"
+            else:
+                state_val = state_val.upper()  # "ca" → "CA"
+            ed['state'] = state_val
+            tr.extra_data = ed
         existing.update(fields)
         tr.state_info = existing
 
@@ -1379,15 +1311,13 @@ async def run_chat_turn(
     db: Session,
     session: ChatSession,
     user_message: str,
+    active_section: Optional[str] = None,
 ) -> dict:
     """
-    Three-phase processing:
-      Phase 1   — Force save_fields to extract any fields from the user message.
-      Phase 1.5 — Targeted interpretation fallback: if Phase 1 captured nothing but required
-                  fields are still missing, run a focused LLM call to interpret the user's
-                  answer in context of the specific field being asked.
-      Phase 2   — Generate conversational reply. If Phase 1.5 also failed, the system prompt
-                  carries a ⚠️ RE-ASK signal so the agent loops on the same question.
+    Two-phase processing:
+      Phase 1 — Forced extraction: save any explicitly stated field values from the user message
+                across all 18 sections.
+      Phase 2 — Conversational reply: respond to what the user said, navigate as needed.
     """
     # Persist user message
     db.add(ChatMessage(session_id=session.id, role="user", content=user_message))
@@ -1397,17 +1327,29 @@ async def run_chat_turn(
     history = db.query(ChatMessage).filter_by(session_id=session.id).order_by(ChatMessage.id).all()
 
     client = OpenAI(api_key=settings.openai_api_key)
-    current_section = session.current_section or "personal-info"
     fields_were_saved = False
+    last_saved_section: str | None = None
+    last_saved_fields: dict = {}
 
-    # Compute field hints for the current section (used in both phases)
-    section_field_hints = _get_section_field_hints(current_section)
+    _active = active_section or "personal-info"
 
-    # Snapshot of missing required fields BEFORE extraction (used to detect stuck turns)
-    missing_before = _get_missing_required_fields(db, session.user_id, current_section)
+    # Detailed field hints for the active section only (other sections covered by EXACT FIELD NAMES)
+    section_field_hints = _get_section_field_hints(_active)
+
+    # Extraction scope: search ALL sections, no inference
+    extraction_scope = (
+        "Extract any value EXPLICITLY stated by the user for any field across all sections. "
+        "Do NOT infer or guess values that aren't directly stated by the user. "
+        "Use the EXACT FIELD NAMES list at the bottom to determine which section a field belongs to."
+    )
+    section_routing_rule = (
+        f"Call save_fields EXACTLY ONCE. Use section= whichever section key from the EXACT FIELD NAMES "
+        f"list the extracted field belongs to. If the message maps to the active section '{_active}', "
+        f"prefer that. If nothing is extractable, call save_fields with fields={{}}."
+    )
 
     # ── Phase 1: Forced extraction ────────────────────────────────────────────
-    # Find the last assistant message for context (helps map yes/no to the right field)
+    # Find the last assistant message for context
     last_assistant_content = None
     for msg in history:
         if msg.role == "assistant":
@@ -1417,8 +1359,10 @@ async def run_chat_turn(
         {
             "role": "system",
             "content": EXTRACT_SYSTEM_PROMPT.format(
-                current_section=current_section,
+                active_section=_active,
                 section_field_hints=section_field_hints,
+                extraction_scope=extraction_scope,
+                section_routing_rule=section_routing_rule,
             ),
         },
     ]
@@ -1439,102 +1383,37 @@ async def run_chat_turn(
             for tc in extract_msg.tool_calls:
                 if tc.function.name == "save_fields":
                     args = json.loads(tc.function.arguments)
-                    section_key = args.get("section", current_section)
+                    section_key = args.get("section", _active)
                     # Model sometimes puts fields at top level instead of nested
                     fields_data = args.get("fields") or {
                         k: v for k, v in args.items() if k != "section"
                     }
                     logger.info("Phase1 extract: section=%s fields=%s", section_key, fields_data)
-                    if fields_data:  # skip if nothing was extracted
+                    if fields_data:
                         _save_fields_to_db(db, session.user_id, section_key, fields_data)
                         fields_were_saved = True
+                        last_saved_section = section_key
+                        last_saved_fields = fields_data
     except Exception as exc:
         logger.warning("Phase 1 extraction failed: %s", exc)
 
-    # ── Phase 1.5: Targeted interpretation fallback ───────────────────────────
-    # Only runs when Phase 1 got nothing AND there are still required fields missing
-    # AND the user sent a substantive reply (not a greeting or "start").
-    _greetings = {"start", "hi", "hello", "hey", "okay", "ok", "sure", "yes", "no"}
-    is_substantive = user_message.strip().lower() not in _greetings and len(user_message.strip()) > 2
-
-    if not fields_were_saved and missing_before and last_assistant_content and is_substantive:
-        first_missing = missing_before[0]
-        schema_fields = FIELD_SCHEMA.get(current_section, {}).get("fields", {})
-        field_meta = schema_fields.get(first_missing, {"type": "text"})
-        ftype = field_meta.get("type", "text")
-        options = field_meta.get("options", [])
-
-        validation_hint = _get_field_validation_hint(first_missing, field_meta)
-
-        interp_lines = [
-            f"A tax assistant asked the user a question. Your job: extract and validate the value for field '{first_missing}'.",
-            f"",
-            f"Question asked (last assistant message):",
-            last_assistant_content[-400:],
-            f"",
-            f"User's response: {user_message}",
-            f"",
-        ]
-        if ftype in ("radio", "select") and options:
-            interp_lines.append(f"Output EXACTLY one of these options (nothing else): {options}")
-            interp_lines.append("Interpret the user's intent liberally — e.g. 'we file together' → 'Married Filing Jointly'.")
-            interp_lines.append("If you genuinely cannot determine which option applies, output: UNCLEAR")
-        elif ftype == "boolean":
-            interp_lines.append("Output EXACTLY 'true' or 'false'. Interpret liberally — 'I think so' → 'true', 'nah' → 'false'.")
-            interp_lines.append("If you cannot determine, output: UNCLEAR")
-        elif ftype == "date":
-            interp_lines.append("Output the date in YYYY-MM-DD format. Reformat any date style into YYYY-MM-DD.")
-            interp_lines.append("If no date found, output: UNCLEAR")
-        elif ftype == "number":
-            interp_lines.append("Output the number only (no $ or commas). If no number found, output: UNCLEAR")
-        else:
-            interp_lines.append("Output the extracted text value only. If nothing relevant found, output: UNCLEAR")
-        if validation_hint:
-            interp_lines.append(f"")
-            interp_lines.append(f"VALIDATION — output UNCLEAR if the value fails: {validation_hint}")
-
-        try:
-            interp_resp = client.chat.completions.create(
-                model=PARSE_MODEL,
-                max_completion_tokens=64,
-                messages=[{"role": "user", "content": "\n".join(interp_lines)}],
-                temperature=0,
+    # Build saved_context for Phase 2
+    if fields_were_saved:
+        saved_context = (
+            f"This turn, the following was saved to section '{last_saved_section}': "
+            f"{list(last_saved_fields.keys())}. "
+            f"User's active page: '{_active}'. "
+            + (
+                "Navigate to that section to show the update."
+                if last_saved_section != _active
+                else "User is already on that page — no navigation needed."
             )
-            interp_value = interp_resp.choices[0].message.content.strip()
-            if interp_value.upper() != "UNCLEAR" and interp_value:
-                normed = _normalize_value(interp_value, field_meta)
-                if normed is not None:
-                    _save_fields_to_db(db, session.user_id, current_section, {first_missing: interp_value})
-                    fields_were_saved = True
-                    logger.info(
-                        "Phase1.5 interpretation: %s=%r -> %r (for '%s')",
-                        first_missing, interp_value, normed, user_message[:60],
-                    )
-        except Exception as exc:
-            logger.warning("Phase 1.5 interpretation failed: %s", exc)
-
-    # ── Compute missing required fields (after Phase 1 + 1.5) ────────────────
-    missing_after = _get_missing_required_fields(db, session.user_id, current_section)
-    # Detect a "stuck" turn: user answered something but we still couldn't capture the field
-    still_stuck = (
-        not fields_were_saved
-        and bool(missing_before)
-        and set(missing_before) == set(missing_after)
-        and is_substantive
-    )
-
-    if missing_after:
-        missing_fields_text = "These required fields are still missing:\n" + "\n".join(
-            f"  - {f}" for f in missing_after
         )
-        if still_stuck:
-            missing_fields_text += (
-                f"\n\n⚠️ RE-ASK REQUIRED: The user responded but no valid value could be captured for "
-                f"'{missing_after[0]}'. Re-ask this exact question — explicitly state the expected "
-                f"format or list the valid options. Do NOT move to the next question or section."
-            )
     else:
-        missing_fields_text = "All required fields for this section are collected."
+        saved_context = (
+            f"Nothing was extracted from the user's message this turn. "
+            f"User is on: '{_active}'."
+        )
 
     # ── Phase 2: Conversational reply ─────────────────────────────────────────
     pdf_sections = ", ".join(get_pdf_upload_sections())
@@ -1542,7 +1421,8 @@ async def run_chat_turn(
     system = SYSTEM_PROMPT_TEMPLATE.format(
         pdf_upload_sections=pdf_sections,
         existing_data_summary=existing_data_summary,
-        missing_fields_text=missing_fields_text,
+        active_section=_active,
+        saved_context=saved_context,
     )
 
     messages = [{"role": "system", "content": system}]

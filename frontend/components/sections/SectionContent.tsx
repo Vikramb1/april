@@ -1,6 +1,9 @@
 'use client'
 
+import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/store'
+import { TAX_SECTIONS, SECTION_GROUPS } from '@/lib/types'
+import { isSectionComplete } from '@/lib/sectionUtils'
 
 // Personal
 import { PersonalSection } from './PersonalSection'
@@ -32,50 +35,89 @@ import { ReviewSection } from './ReviewSection'
 import { StateResidencySection } from './StateResidencySection'
 import { StateReturnSection } from './StateReturnSection'
 
+const allSubsections = SECTION_GROUPS.flatMap((g) => g.subsections)
+
 export function SectionContent() {
-  const activeSection = useStore((s) => s.activeSection)
+  const { activeSection, taxData, visitedSections, setActiveSection } = useStore(
+    useShallow((s) => ({
+      activeSection: s.activeSection,
+      taxData: s.taxData,
+      visitedSections: s.visitedSections,
+      setActiveSection: s.setActiveSection,
+    })),
+  )
 
-  switch (activeSection) {
-    // Personal
-    case 'personal-info':         return <PersonalSection />
-    case 'filing-status':         return <FilingStatusSection />
-    case 'dependents':            return <DependentsSection />
-    case 'identity-protection':   return <IdentityProtectionSection />
+  const currentIdx = TAX_SECTIONS.indexOf(activeSection)
+  const nextKey =
+    currentIdx >= 0 && currentIdx < TAX_SECTIONS.length - 1
+      ? TAX_SECTIONS[currentIdx + 1]
+      : null
+  const nextLabel = allSubsections.find((s) => s.key === nextKey)?.label
+  const isComplete = isSectionComplete(
+    activeSection,
+    taxData,
+    visitedSections.includes(activeSection),
+  )
 
-    // Income
-    case 'w2-income':             return <W2Section />
-    case '1099-income':           return <Form1099Section />
-    case 'other-income':          return <OtherIncomeSection />
+  function renderSection() {
+    switch (activeSection) {
+      // Personal
+      case 'personal-info':         return <PersonalSection />
+      case 'filing-status':         return <FilingStatusSection />
+      case 'dependents':            return <DependentsSection />
+      case 'identity-protection':   return <IdentityProtectionSection />
 
-    // Deductions & Credits
-    case 'deductions':            return <DeductionsSection />
-    case 'health-insurance':      return <HealthInsuranceSection />
-    case 'common-credits':        return <CommonCreditsSection />
-    case 'other-credits':         return <OtherCreditsSection />
+      // Income
+      case 'w2-income':             return <W2Section />
+      case '1099-income':           return <Form1099Section />
+      case 'other-income':          return <OtherIncomeSection />
 
-    // Miscellaneous
-    case 'misc-forms':            return <MiscSection />
-    case 'refund-maximizer':      return <RefundMaximizerSection />
+      // Deductions & Credits
+      case 'deductions':            return <DeductionsSection />
+      case 'health-insurance':      return <HealthInsuranceSection />
+      case 'common-credits':        return <CommonCreditsSection />
+      case 'other-credits':         return <OtherCreditsSection />
 
-    // Summary
-    case 'federal-summary':       return <FederalSummarySection />
-    case 'bank-refund':           return <BankSection />
-    case 'review':                return <ReviewSection />
+      // Miscellaneous
+      case 'misc-forms':            return <MiscSection />
+      case 'refund-maximizer':      return <RefundMaximizerSection />
 
-    // State
-    case 'state-residency':       return <StateResidencySection />
-    case 'state-return':          return <StateReturnSection />
+      // Summary
+      case 'federal-summary':       return <FederalSummarySection />
+      case 'bank-refund':           return <BankSection />
+      case 'review':                return <ReviewSection />
 
-    // Legacy keys (backward compat)
-    case 'Personal Information':  return <PersonalSection />
-    case 'Filing Status':         return <FilingStatusSection />
-    case 'W-2 Income':            return <W2Section />
-    case '1099 Income':           return <Form1099Section />
-    case 'Deductions':            return <DeductionsSection />
-    case 'Credits':               return <CommonCreditsSection />
-    case 'Bank Info':             return <BankSection />
-    case 'Review':                return <ReviewSection />
+      // State
+      case 'state-residency':       return <StateResidencySection />
+      case 'state-return':          return <StateReturnSection />
 
-    default:                      return <PersonalSection />
+      // Legacy keys (backward compat)
+      case 'Personal Information':  return <PersonalSection />
+      case 'Filing Status':         return <FilingStatusSection />
+      case 'W-2 Income':            return <W2Section />
+      case '1099 Income':           return <Form1099Section />
+      case 'Deductions':            return <DeductionsSection />
+      case 'Credits':               return <CommonCreditsSection />
+      case 'Bank Info':             return <BankSection />
+      case 'Review':                return <ReviewSection />
+
+      default:                      return <PersonalSection />
+    }
   }
+
+  return (
+    <div>
+      {renderSection()}
+      {isComplete && nextKey && (
+        <div className="flex justify-end mt-8 pb-2">
+          <button
+            onClick={() => setActiveSection(nextKey)}
+            className="bg-green text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-2"
+          >
+            {nextLabel ?? 'Next'} <span aria-hidden>→</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }

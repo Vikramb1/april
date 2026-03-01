@@ -54,7 +54,7 @@ export function MiscSection() {
         <div
           className={clsx(
             'flex items-start gap-3 p-4 cursor-pointer',
-            misc.has_estimated_payments ? 'bg-green-pale' : 'bg-white hover:bg-[#F7F5F0]',
+            misc.has_estimated_payments ? 'bg-green-pale' : 'hover:bg-[#F7F5F0]',
           )}
           onClick={() => update({ has_estimated_payments: !misc.has_estimated_payments })}
         >
@@ -118,7 +118,7 @@ export function MiscSection() {
         <div
           className={clsx(
             'flex items-start gap-3 p-4 cursor-pointer',
-            misc.apply_refund_next_year ? 'bg-green-pale' : 'bg-white hover:bg-[#F7F5F0]',
+            misc.apply_refund_next_year ? 'bg-green-pale' : 'hover:bg-[#F7F5F0]',
           )}
           onClick={() => update({ apply_refund_next_year: !misc.apply_refund_next_year })}
         >
@@ -156,12 +156,12 @@ export function MiscSection() {
       <div
         className={clsx(
           'border rounded-xl p-4 mb-3 transition-colors',
-          misc.has_foreign_accounts ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+          misc.has_foreign_accounts ? 'border-green bg-green-pale' : 'border-hairline',
         )}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="text-[14px] font-semibold text-ink">Foreign Financial Accounts (FBAR)</p>
+            <p className="text-[14px] font-semibold text-ink">Foreign Financial Accounts (FBAR)<span className="text-red-500 ml-0.5">*</span></p>
             <p className="text-[12px] text-muted mt-0.5 leading-relaxed">
               Did you have a financial interest in or signature authority over a foreign bank,
               securities, or other financial account with a combined value over $10,000 at any
@@ -195,12 +195,12 @@ export function MiscSection() {
       <div
         className={clsx(
           'border rounded-xl p-4 mb-3 transition-colors',
-          misc.has_foreign_assets ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+          misc.has_foreign_assets ? 'border-green bg-green-pale' : 'border-hairline',
         )}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="text-[14px] font-semibold text-ink">Foreign Financial Assets (Form 8938)</p>
+            <p className="text-[14px] font-semibold text-ink">Foreign Financial Assets (Form 8938)<span className="text-red-500 ml-0.5">*</span></p>
             <p className="text-[12px] text-muted mt-0.5 leading-relaxed">
               Did you hold specified foreign financial assets (foreign stocks, accounts, or
               partnership interests) above the FATCA reporting thresholds?

@@ -40,7 +40,7 @@ function YesNoRow({
   required?: boolean
 }) {
   return (
-    <div className="border border-hairline rounded-xl p-4 mb-3 bg-white">
+    <div className="border border-hairline rounded-xl p-4 mb-3">
       <p className="text-[14px] font-semibold text-ink mb-1">
         {question}{required && <span className="text-red-500 ml-0.5">*</span>}
       </p>
@@ -98,7 +98,7 @@ export function StateResidencySection() {
       </p>
 
       {/* State selector */}
-      <div className="border border-hairline rounded-xl p-4 mb-4 bg-white">
+      <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] font-semibold text-ink mb-3">
           Which state did you live in during 2025?<span className="text-red-500 ml-0.5">*</span>
         </p>

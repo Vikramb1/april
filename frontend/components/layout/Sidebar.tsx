@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { SECTION_GROUPS } from "@/lib/types";
 import type { TaxData } from "@/lib/types";
+import { isSectionComplete, OPTIONAL_SECTIONS } from "@/lib/sectionUtils";
 import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from "@/lib/dummyData";
 
 // ── Refund estimate helpers ──────────────────────────────────────────────────
@@ -70,73 +71,6 @@ function fmtMoney(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
-// Optional sections are "complete" simply by being visited (nothing required)
-const OPTIONAL_SECTIONS = new Set([
-  'dependents', 'common-credits', 'other-credits',
-  'misc-forms', 'federal-summary',
-]);
-
-// All required data present → green
-function isSectionComplete(key: string, taxData: TaxData | null, visited: boolean): boolean {
-  if (OPTIONAL_SECTIONS.has(key)) return visited;
-  if (!taxData) return false;
-  const tr = taxData.tax_return ?? {};
-  const w2s = taxData.w2_forms ?? [];
-  const cred = taxData.credits ?? {};
-  const ded = taxData.deductions ?? {};
-  const oi = taxData.other_income ?? {};
-  const misc = taxData.misc_info ?? {};
-  const si = taxData.state_info ?? {};
-
-  switch (key) {
-    case 'personal-info':
-      return !!(tr.first_name && tr.last_name && tr.ssn && tr.date_of_birth &&
-                tr.address && tr.city && tr.state && tr.zip_code &&
-                tr.claimed_as_dependent && tr.nonresident_alien);
-    case 'filing-status': {
-      if (!tr.filing_status) return false;
-      if (tr.filing_status === 'Married Filing Jointly') {
-        return !!(tr.spouse_first_name && tr.spouse_last_name && tr.spouse_ssn);
-      }
-      return true;
-    }
-    case 'identity-protection':
-      if (!tr.identity_protection_pin) return false;
-      if (tr.identity_protection_pin === 'Yes') return !!tr.identity_protection_pin_number;
-      return true;
-    case 'w2-income':
-      return w2s.length > 0 && w2s.every((w) => !!(w.employer_name && w.wages != null));
-    case '1099-income': {
-      if (oi.has_1099_income === 'No') return true;
-      if (oi.has_1099_income !== 'Yes') return false;
-      const forms = taxData?.form_1099s ?? [];
-      return forms.length > 0 && forms.every((f) => !!f.payer_name);
-    }
-    case 'other-income':
-      return !!oi.has_cryptocurrency;
-    case 'deductions': {
-      if (ded.has_itemized_deductions === 'No') return true;
-      if (ded.has_itemized_deductions !== 'Yes') return false;
-      return [ded.has_homeowner, ded.has_donations, ded.has_medical, ded.has_taxes_paid,
-              ded.has_investment_interest, ded.has_casualty, ded.has_other_itemized]
-        .some((v) => v === true);
-    }
-    case 'health-insurance':
-      return !!cred.has_marketplace_insurance;
-    case 'refund-maximizer':
-      return !!misc.refund_maximizer;
-    case 'bank-refund':
-      return !!tr.refund_type;
-    case 'review':
-      return false;
-    case 'state-residency':
-      return !!si.is_state_resident;
-    case 'state-return':
-      return !!si.is_state_resident;
-    default:
-      return false;
-  }
-}
 
 // Has SOME data but not complete → amber (only when partially filled, not just visited)
 function isSectionStarted(key: string, taxData: TaxData | null): boolean {
@@ -145,14 +79,34 @@ function isSectionStarted(key: string, taxData: TaxData | null): boolean {
   const ded = taxData.deductions ?? {};
   const oi = taxData.other_income ?? {};
 
+  const mi = taxData.misc_info ?? {}
+
   switch (key) {
     case 'personal-info': {
       const hasAny = !!(tr.first_name || tr.last_name || tr.ssn || tr.date_of_birth ||
                         tr.address || tr.city || tr.state || tr.zip_code);
       const hasAll = !!(tr.first_name && tr.last_name && tr.ssn && tr.date_of_birth &&
                         tr.address && tr.city && tr.state && tr.zip_code &&
-                        tr.claimed_as_dependent && tr.nonresident_alien);
+                        tr.claimed_as_dependent && tr.blind && tr.deceased && tr.nonresident_alien);
       return hasAny && !hasAll;
+    }
+    case 'dependents': {
+      // Amber if gate answered Yes but no dependents added yet
+      if (mi.has_dependents === 'Yes') {
+        return (taxData.dependents ?? []).length === 0
+      }
+      return false
+    }
+    case 'misc-forms': {
+      // Amber if any item engaged but both Yes/No gates not yet answered
+      const eitherAnswered =
+        mi.has_foreign_accounts !== undefined ||
+        mi.has_foreign_assets !== undefined ||
+        !!mi.has_estimated_payments ||
+        !!mi.apply_refund_next_year
+      const bothAnswered =
+        mi.has_foreign_accounts !== undefined && mi.has_foreign_assets !== undefined
+      return eitherAnswered && !bothAnswered
     }
     case '1099-income': {
       // Amber if gate answered Yes but no forms added yet

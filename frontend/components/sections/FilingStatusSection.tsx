@@ -50,7 +50,7 @@ export function FilingStatusSection() {
               'border rounded-xl p-4 cursor-pointer transition-colors',
               selected === s
                 ? 'border-green bg-green-pale'
-                : 'border-hairline bg-white hover:bg-[#F7F5F0]',
+                : 'border-hairline hover:bg-[#F7F5F0]',
             )}
           >
             <div className="flex items-center gap-3">

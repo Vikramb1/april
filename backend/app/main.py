@@ -76,7 +76,7 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    result = await run_chat_turn(db, session, body.message)
+    result = await run_chat_turn(db, session, body.message, active_section=body.active_section)
     return ChatResponse(**result)
 
 

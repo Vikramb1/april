@@ -50,7 +50,7 @@ function CategoryCard({ label, description, on, onToggle, children }: CategoryCa
       <div
         className={clsx(
           'flex items-start gap-3 p-4 cursor-pointer',
-          on ? 'bg-green-pale' : 'bg-white hover:bg-[#F7F5F0]',
+          on ? 'bg-green-pale' : 'hover:bg-[#F7F5F0]',
         )}
         onClick={() => onToggle(!on)}
       >
@@ -123,7 +123,7 @@ export function DeductionsSection() {
       </p>
 
       {/* Gate question */}
-      <div className="border border-hairline rounded-xl p-4 mb-4 bg-white">
+      <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] font-medium text-ink mb-3">
           Do you have itemized deductions to report?
           <span className="text-red-500 ml-0.5">*</span>

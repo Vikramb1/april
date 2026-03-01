@@ -32,7 +32,7 @@ export function RefundMaximizerSection() {
             'border rounded-xl p-5 cursor-pointer transition-colors',
             misc.refund_maximizer === 'maximize'
               ? 'border-green bg-green-pale'
-              : 'border-hairline bg-white hover:bg-[#F7F5F0]',
+              : 'border-hairline hover:bg-[#F7F5F0]',
           )}
         >
           <div className="flex items-start gap-3">
@@ -62,7 +62,7 @@ export function RefundMaximizerSection() {
             'border rounded-xl p-5 cursor-pointer transition-colors',
             misc.refund_maximizer === 'skip'
               ? 'border-green bg-green-pale'
-              : 'border-hairline bg-white hover:bg-[#F7F5F0]',
+              : 'border-hairline hover:bg-[#F7F5F0]',
           )}
         >
           <div className="flex items-start gap-3">

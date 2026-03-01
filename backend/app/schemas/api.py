@@ -27,6 +27,7 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: int
     message: str
+    active_section: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

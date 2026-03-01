@@ -38,7 +38,7 @@ function ToggleRow({
     <div
       className={clsx(
         'border rounded-xl p-3 mb-2 transition-colors',
-        on === true ? 'border-green bg-green-pale' : 'border-hairline bg-white',
+        on === true ? 'border-green bg-green-pale' : 'border-hairline',
       )}
     >
       <div className="flex items-start justify-between gap-3">

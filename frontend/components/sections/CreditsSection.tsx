@@ -15,7 +15,7 @@ function CreditCard({ title, description, value }: CreditCardProps) {
   const [localVal, setLocalVal] = useState(String(value ?? ''))
 
   return (
-    <div className="bg-white border border-hairline rounded-xl p-5 mb-3">
+    <div className="border border-hairline rounded-xl p-5 mb-3">
       <p className="text-[15px] font-bold text-ink">{title}</p>
       <p className="text-[13px] text-muted mt-1 mb-3">{description}</p>
       <input

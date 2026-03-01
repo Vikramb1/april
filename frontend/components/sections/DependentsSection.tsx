@@ -161,7 +161,7 @@ export function DependentsSection() {
       {/* Gate question */}
       <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] font-semibold text-ink mb-1">
-          Do you have any dependents to claim on your 2025 return?
+          Do you have any dependents to claim on your 2025 return?<span className="text-red-500 ml-0.5">*</span>
         </p>
         <p className="text-[12px] text-muted mb-4 leading-relaxed">
           Dependents include qualifying children (under 19, or under 24 if a full-time student)

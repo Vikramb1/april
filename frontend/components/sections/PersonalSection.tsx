@@ -192,11 +192,13 @@ export function PersonalSection() {
         label="Were you blind on 12/31/2025?"
         value={tr.blind ?? ''}
         onChange={update('blind') as (v: string) => void}
+        required
       />
       <RadioRow
         label="Did you pass away in 2025?"
         value={tr.deceased ?? ''}
         onChange={update('deceased') as (v: string) => void}
+        required
       />
       <RadioRow
         label="Are you a Nonresident Alien?"

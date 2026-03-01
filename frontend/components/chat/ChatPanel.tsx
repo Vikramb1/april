@@ -35,6 +35,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     phase,
     clearMessages,
     activeYear,
+    activeSection,
   } = useStore(
     useShallow((s) => ({
       messages: s.messages,
@@ -53,6 +54,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       phase: s.phase,
       clearMessages: s.clearMessages,
       activeYear: s.activeYear,
+      activeSection: s.activeSection,
     }))
   )
 
@@ -80,7 +82,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     if (!sessionId || backendDown || messages.length > 0 || hasGreeted.current) return
     hasGreeted.current = true
     setIsTyping(true)
-    api.chat(sessionId, 'start')
+    api.chat(sessionId, 'start', activeSection)
       .then((res) => {
         addMessage({ id: Date.now().toString(), role: 'assistant', content: res.reply })
         if (res.navigate_to_section) setActiveSection(res.navigate_to_section)
@@ -111,7 +113,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     setIsTyping(true)
 
     try {
-      const res = await api.chat(sessionId, message)
+      const res = await api.chat(sessionId, message, activeSection)
 
       addMessage({
         id: (Date.now() + 1).toString(),

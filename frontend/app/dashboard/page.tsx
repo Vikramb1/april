@@ -25,6 +25,30 @@ function PastYearPanel({ year }: { year: string }) {
 function CurrentYearPanel() {
   const phase = useStore((s) => s.phase)
   const saveStatus = useStore((s) => s.saveStatus)
+  const taxData = useStore((s) => s.taxData)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to the first unfilled field whenever taxData updates
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container || phase !== 'collecting') return
+
+    requestAnimationFrame(() => {
+      // Find the first input / select whose current value is empty
+      const els = Array.from(
+        container.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')
+      )
+      const firstEmpty = els.find((el) => !el.value || el.value === '')
+      if (!firstEmpty) return
+
+      const containerRect = container.getBoundingClientRect()
+      const elRect = firstEmpty.getBoundingClientRect()
+      // Position the empty field roughly 1/3 from the top of the visible area
+      const targetScroll =
+        container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 3
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
+    })
+  }, [taxData, phase])
 
   if (phase === 'filing' || phase === 'filed') {
     return <FilingView />
@@ -47,7 +71,7 @@ function CurrentYearPanel() {
 
   // Collecting phase — just section content, sidebar handles navigation
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6 relative">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6 relative">
       {saveStatus !== 'idle' && (
         <div className="absolute top-4 right-4 text-[11px] font-medium pointer-events-none">
           {saveStatus === 'saving' && <span className="text-muted shimmer">Saving…</span>}
