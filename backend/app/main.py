@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db, init_db
@@ -30,6 +31,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="April Tax Filing API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── POST /users ────────────────────────────────────────────────────────────

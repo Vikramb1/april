@@ -56,7 +56,7 @@ class SubmitTaxesRequest(BaseModel):
 
 
 class SectionResult(BaseModel):
-    section: str
+    section_name: str
     success: bool
     error: Optional[str] = None
 

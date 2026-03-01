@@ -1,13 +1,15 @@
-# April — Tax Filing Backend
+# April — Backend
 
 April is a Python backend that collects user tax data through a conversational chat interface and files a return on FreeTaxUSA using a browser-use automation agent.
+
+See [FRONTEND.md](./FRONTEND.md) for the Next.js frontend that consumes this API.
 
 ---
 
 ## Architecture Overview
 
 ```
-scripts/scan_freetaxusa.py     ← multi-pass scanner, saves JSON field manifest
+scripts/scan_freetaxusa.py     ← one-time runner, saves JSON field manifest
 data/freetaxusa_fields.json    ← field manifest consumed by all agents
 
 FastAPI backend/
@@ -19,6 +21,7 @@ FastAPI backend/
   POST /submit-taxes           ← trigger browser-use submission agent
   POST /retry-section          ← retry a single failed section
   GET  /users/{id}/data        ← review all stored tax data
+  GET  /filing-stream/{user_id}← SSE stream of per-section filing progress events
 
 SQLite (april.db)              ← stores all user data and chat history
 ```
@@ -30,8 +33,9 @@ SQLite (april.db)              ← stores all user data and chat history
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app + all routes
+│   ├── main.py                  # FastAPI app + all routes (9 total)
 │   ├── config.py                # Pydantic settings (loads from .env)
+│   ├── queues.py                # Shared asyncio Queues for SSE filing stream
 │   ├── database/
 │   │   ├── models.py            # SQLAlchemy ORM models
 │   │   └── session.py           # engine + get_db dependency + init_db()
@@ -43,14 +47,12 @@ backend/
 │       ├── browser_agent.py     # browser-use submission agent (CDP)
 │       └── field_loader.py      # load/query freetaxusa_fields.json
 ├── scripts/
-│   └── scan_freetaxusa.py       # multi-pass scanner (6 passes to reveal all conditional fields)
+│   └── scan_freetaxusa.py       # one-time scanner (walks FreeTaxUSA with dummy data)
 ├── data/
-│   └── freetaxusa_fields.json   # scanner output (placeholder committed; re-run scanner for real fields)
+│   └── freetaxusa_fields.json   # scanner output (placeholder committed; re-run for real fields)
 ├── pyproject.toml
 ├── .env.example
 └── april.db                     # SQLite database (gitignored)
-
-frontend/                        # Next.js frontend (connects to this API in the future)
 ```
 
 ---
@@ -59,17 +61,9 @@ frontend/                        # Next.js frontend (connects to this API in the
 
 ### 1. Website Scanner (`scripts/scan_freetaxusa.py`)
 - Connects to an already-running Chrome instance via CDP at `http://localhost:9222`
-- Runs **6 sequential agent passes** over the same return, each with a different focus:
-  1. Baseline (Single + W-2) — base fields with standard deduction
-  2. Married Filing Jointly — spouse info, dependents, joint-specific options
-  3. Self-Employment (1099-NEC + Schedule C) — business income, expenses, home office, vehicle
-  4. Investment Income (1099-INT, 1099-DIV, 1099-B) — interest, dividends, capital gains
-  5. Itemized Deductions — mortgage, SALT, charitable, medical
-  6. Credits & Other — education credits, CTC, EITC, HSA, IRA
-- Each pass uses a browser-use `Agent` with Claude Sonnet and pass-specific dummy data
-- After each pass, newly discovered fields are merged into a cumulative manifest (deduplicated by section + field ID)
+- Uses a browser-use `Agent` with Claude Sonnet to walk through FreeTaxUSA with dummy data
+- Records every field label, type, section, and required status encountered
 - Outputs `data/freetaxusa_fields.json` — the canonical field manifest
-- Supports `--pass N` flag to run a single pass (merges into existing manifest)
 - Run once; commit the output
 
 ### 2. SQLite Models (`app/database/models.py`)
@@ -101,11 +95,12 @@ frontend/                        # Next.js frontend (connects to this API in the
 
 ### 5. Browser Submission Agent (`app/services/browser_agent.py`)
 - Uses browser-use `Agent` + `Browser(cdp_url=...)` connected to Chrome
-- Runs **one agent per section** (not one giant task) for reliability
+- Runs **one agent per section** for reliability
 - Sections: Personal Information → Filing Status → W-2 Income → 1099 Income → Deductions → Credits → Bank/Refund → Review
 - Stops before the final "File" / "Submit" button
+- After each section completes, pushes an event to `app/queues.py` → consumed by SSE endpoint
 - Supports individual section retry via `run_section()`
-- Returns per-section `{section, success, error}` results
+- Returns per-section `{section_name, success, error}` results
 
 ### 6. FastAPI Routes (`app/main.py`)
 - `POST /users` — idempotent user creation by email
@@ -116,6 +111,12 @@ frontend/                        # Next.js frontend (connects to this API in the
 - `POST /submit-taxes` — triggers browser agent, returns per-section results
 - `POST /retry-section` — retries one named section
 - `GET /users/{id}/data` — returns all stored tax data as JSON
+- `GET /filing-stream/{user_id}` — SSE stream of `section_complete` and `complete` events
+
+### 7. SSE Queue (`app/queues.py`)
+- `filing_queues: dict[int, asyncio.Queue]` — one queue per active filing user
+- `browser_agent.py` pushes events; `main.py` /filing-stream reads them
+- Separated into its own module to avoid circular imports
 
 ---
 
@@ -169,10 +170,7 @@ cp .env.example .env
 # Navigate Chrome to freetaxusa.com and start/log in to a return, then:
 cd backend
 python scripts/scan_freetaxusa.py
-# → runs all 6 passes, writes data/freetaxusa_fields.json
-
-# Or run a single pass for debugging:
-python scripts/scan_freetaxusa.py --pass 2
+# → writes data/freetaxusa_fields.json
 ```
 
 ### Step 2 — Start the server
@@ -180,47 +178,32 @@ python scripts/scan_freetaxusa.py --pass 2
 cd backend
 uvicorn app.main:app --reload
 # Server runs at http://localhost:8000
+# API docs: http://localhost:8000/docs
 ```
 
-### Step 3 — Chat flow
+### Step 3 — Chat flow (curl example)
 ```bash
-# Create user
 curl -X POST http://localhost:8000/users \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com"}'
 
-# Create session
 curl -X POST http://localhost:8000/sessions \
   -H "Content-Type: application/json" \
   -d '{"user_id": 1}'
 
-# Send chat messages
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"session_id": 1, "message": "Hi, I want to file my taxes"}'
+  -d '{"session_id": 1, "message": "I have a W-2 from Google"}'
 
-# Upload a W-2 PDF when prompted
-curl -X POST http://localhost:8000/upload-pdf \
-  -F "session_id=1" \
-  -F "file=@/path/to/w2.pdf"
-
-# Check status
 curl http://localhost:8000/sessions/1/status
 ```
 
-### Step 4 — Submit
+### Step 4 — Submit (Chrome must be open at FreeTaxUSA)
 ```bash
-# Chrome must be open at freetaxusa.com with the return in progress
 curl -X POST http://localhost:8000/submit-taxes \
   -H "Content-Type: application/json" \
   -d '{"user_id": 1}'
 
-# Review stored data
-curl http://localhost:8000/users/1/data
+# Watch live progress via SSE:
+curl http://localhost:8000/filing-stream/1
 ```
-
----
-
-## Frontend Integration
-
-The `/frontend` directory contains a Next.js app that will connect to this FastAPI backend in the future. All API responses are JSON and frontend-agnostic. The API docs are available at `http://localhost:8000/docs` (Swagger UI) when the server is running.

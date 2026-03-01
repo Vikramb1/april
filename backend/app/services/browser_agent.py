@@ -105,7 +105,7 @@ async def run_submission(db: Session, user_id: int) -> list[dict[str, Any]]:
             # Skip empty sections (no data collected)
             if section_name != "Review" and not section_data:
                 results.append({
-                    "section": section_name,
+                    "section_name": section_name,
                     "success": True,
                     "error": "Skipped — no data",
                 })
@@ -117,13 +117,13 @@ async def run_submission(db: Session, user_id: int) -> list[dict[str, Any]]:
                 agent = Agent(task=task, llm=llm, browser=browser)
                 history = await agent.run()
                 results.append({
-                    "section": section_name,
+                    "section_name": section_name,
                     "success": history.is_done(),
                     "error": None,
                 })
             except Exception as e:
                 results.append({
-                    "section": section_name,
+                    "section_name": section_name,
                     "success": False,
                     "error": str(e),
                 })
@@ -149,13 +149,13 @@ async def run_section(db: Session, user_id: int, section_name: str) -> dict[str,
         agent = Agent(task=task, llm=llm, browser=browser)
         history = await agent.run()
         return {
-            "section": section_name,
+            "section_name": section_name,
             "success": history.is_done(),
             "error": None,
         }
     except Exception as e:
         return {
-            "section": section_name,
+            "section_name": section_name,
             "success": False,
             "error": str(e),
         }
