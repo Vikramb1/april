@@ -44,5 +44,9 @@ async def parse_tax_pdf(pdf_bytes: bytes) -> dict:
         ],
     )
 
-    raw = message.content[0].text
+    raw = message.content[0].text.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1]  # remove ```json line
+        raw = raw.rsplit("```", 1)[0]  # remove closing ```
     return json.loads(raw)

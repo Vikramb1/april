@@ -78,6 +78,6 @@ async def get_gusto_w2_result(task_id: str) -> bytes:
     file_output = await client.files.task_output(task_id, str(file_info.id))
 
     async with httpx.AsyncClient() as http:
-        resp = await http.get(file_output.presigned_url)
+        resp = await http.get(file_output.download_url)
         resp.raise_for_status()
         return resp.content

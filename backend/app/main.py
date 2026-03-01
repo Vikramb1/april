@@ -275,8 +275,9 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
 
     w2 = W2Form(user_id=body.user_id)
     for k, v in fields.items():
-        if hasattr(w2, k):
+        if hasattr(w2, k) and k not in ("id", "user_id", "created_at", "updated_at", "extra_data"):
             setattr(w2, k, v)
+    w2.extra_data = fields
     db.add(w2)
     db.commit()
     db.refresh(w2)
