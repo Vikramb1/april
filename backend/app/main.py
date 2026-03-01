@@ -23,9 +23,6 @@ from app.schemas.api import (
 )
 from app.services.chat_agent import run_chat_turn
 from app.services.pdf_parser import parse_tax_pdf
-from app.services.browser_agent import run_submission, run_section
-from app.services.gusto_agent import start_gusto_w2_task, get_gusto_w2_result
-from app.services.fidelity_agent import start_fidelity_1099_task, get_fidelity_1099_result
 from app.services.field_loader import get_all_required_fields
 
 
@@ -185,6 +182,7 @@ async def submit_taxes(body: SubmitTaxesRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    from app.services.browser_agent import run_submission
     raw_results = await run_submission(db, body.user_id)
     results = [SectionResult(**r) for r in raw_results]
     overall = all(r.success for r in results)
@@ -198,27 +196,78 @@ async def retry_section(body: RetrySectionRequest, db: Session = Depends(get_db)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    from app.services.browser_agent import run_section
     result = await run_section(db, body.user_id, body.section_name)
     return SectionResult(**result)
 
 
-# Columns excluded from _row_to_dict — returned separately in UserDataResponse or not at all
+# Columns excluded from _row_to_dict — returned separately or binary/internal only
 _EXCLUDE_COLS = {
-    'extra_data', 'pdf_data', 'created_at', 'updated_at', 'user_id',
+    'extra_data', 'raw_json', 'pdf_data', 'created_at', 'updated_at', 'user_id',
     'other_income', 'dependents', 'misc_info', 'state_info',  # returned as top-level fields
 }
 
-# Shared helper: merge explicit columns with extra_data (extra_data wins)
-def _row_to_dict(obj):
+# DB column name → TypeScript interface field name renames
+_TR_RENAMES = {
+    'dob': 'date_of_birth',
+    'direct_deposit_routing': 'bank_routing_number',
+    'direct_deposit_account': 'bank_account_number',
+}
+_W2_RENAMES = {
+    'federal_withheld': 'federal_tax_withheld',
+    'ss_withheld': 'social_security_tax_withheld',
+    'medicare_withheld': 'medicare_tax_withheld',
+    'state_withheld': 'state_tax_withheld',
+    'local_withheld': 'local_tax',
+    'box12_code': 'box12_code1',
+    'box12_amount': 'box12_amount1',
+}
+
+# Shared helper: merge explicit columns (renamed) with JSON overflow field
+# Checks extra_data first (TaxReturn, W2Form), then raw_json (Form1099)
+def _row_to_dict(obj, col_renames: dict | None = None):
     if obj is None:
         return None
-    base = {
-        c.name: getattr(obj, c.name)
-        for c in obj.__table__.columns
-        if c.name not in _EXCLUDE_COLS
-    }
-    extra = getattr(obj, 'extra_data', None) or {}
+    base = {}
+    for c in obj.__table__.columns:
+        if c.name in _EXCLUDE_COLS:
+            continue
+        key = (col_renames or {}).get(c.name, c.name)
+        base[key] = getattr(obj, c.name)
+    # Use extra_data if present, otherwise fall back to raw_json (Form1099)
+    extra = getattr(obj, 'extra_data', None) or getattr(obj, 'raw_json', None) or {}
+    if not isinstance(extra, dict):
+        extra = {}
     return {**base, **extra}
+
+
+def _deduction_to_dict(ded) -> dict | None:
+    """Merge Deduction DB columns (with renames) + other_json. other_json wins on conflict."""
+    if ded is None:
+        return None
+    base = {
+        'mortgage_interest': ded.mortgage_interest,
+        'cash_donations': ded.charitable_cash,       # rename: charitable_cash → cash_donations
+        'student_loan_interest': ded.student_loan_interest,
+    }
+    other = ded.other_json or {}
+    # Merge: other_json wins; drop None base values so they don't clobber existing other_json data
+    result = {k: v for k, v in base.items() if v is not None}
+    result.update(other)
+    return result
+
+
+def _credit_to_dict(cred) -> dict | None:
+    """Merge Credit DB columns (with renames) + other_json. other_json wins on conflict."""
+    if cred is None:
+        return None
+    base = {
+        'eic_qualifying_children': cred.eitc_qualifying_children,  # rename
+    }
+    other = cred.other_json or {}
+    result = {k: v for k, v in base.items() if v is not None}
+    result.update(other)
+    return result
 
 
 # ── GET /users/{user_id}/data ──────────────────────────────────────────────
@@ -237,11 +286,11 @@ def get_user_data(user_id: int, db: Session = Depends(get_db)):
     return UserDataResponse(
         user_id=user.id,
         email=user.email,
-        tax_return=_row_to_dict(tr),
-        w2_forms=[_row_to_dict(w) for w in w2s],
+        tax_return=_row_to_dict(tr, _TR_RENAMES),
+        w2_forms=[_row_to_dict(w, _W2_RENAMES) for w in w2s],
         form_1099s=[_row_to_dict(f) for f in f1099s],
-        deductions=ded.other_json if ded else None,
-        credits=cred.other_json if cred else None,
+        deductions=_deduction_to_dict(ded),
+        credits=_credit_to_dict(cred),
         other_income=tr.other_income if tr else None,
         dependents=tr.dependents or [] if tr else [],
         misc_info=tr.misc_info if tr else None,
@@ -263,6 +312,7 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="User not found")
 
     # Start the task and get live_url + task_id
+    from app.services.gusto_agent import start_gusto_w2_task, get_gusto_w2_result
     task_info = await start_gusto_w2_task()
     import logging
     logging.getLogger("uvicorn").info(
@@ -316,6 +366,7 @@ async def fetch_fidelity_1099(body: FetchFidelity1099Request, db: Session = Depe
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    from app.services.fidelity_agent import start_fidelity_1099_task, get_fidelity_1099_result
     task_info = await start_fidelity_1099_task()
     import logging
     logging.getLogger("uvicorn").info(
@@ -462,11 +513,11 @@ def update_user_data(user_id: int, body: UpdateDataRequest, db: Session = Depend
     return UserDataResponse(
         user_id=user.id,
         email=user.email,
-        tax_return=_row_to_dict(tr),
-        w2_forms=[_row_to_dict(w) for w in w2s],
+        tax_return=_row_to_dict(tr, _TR_RENAMES),
+        w2_forms=[_row_to_dict(w, _W2_RENAMES) for w in w2s],
         form_1099s=[_row_to_dict(f) for f in f1099s],
-        deductions=ded.other_json if ded else None,
-        credits=cred.other_json if cred else None,
+        deductions=_deduction_to_dict(ded),
+        credits=_credit_to_dict(cred),
         other_income=tr.other_income if tr else None,
         dependents=tr.dependents or [] if tr else [],
         misc_info=tr.misc_info if tr else None,

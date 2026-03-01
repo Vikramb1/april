@@ -40,6 +40,7 @@ export function IdentityProtectionSection() {
       <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] text-ink font-medium mb-3">
           Do you have an Identity Protection PIN from the IRS?
+          <span className="text-red-500 ml-0.5">*</span>
         </p>
         <div className="flex gap-2">
           {['Yes', 'No'].map((opt) => (
@@ -60,7 +61,7 @@ export function IdentityProtectionSection() {
 
         {hasPin === 'Yes' && (
           <div className="mt-4 pt-4 border-t border-hairline">
-            <p className="text-[12px] text-muted mb-2">Enter your 6-digit IP PIN</p>
+            <p className="text-[12px] text-muted mb-2">Enter your 6-digit IP PIN<span className="text-red-500 ml-0.5">*</span></p>
             <input
               value={pinNumber}
               onChange={(e) => handlePinNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}

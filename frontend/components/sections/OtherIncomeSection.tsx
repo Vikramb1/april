@@ -94,7 +94,9 @@ export function OtherIncomeSection() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="text-[14px] font-semibold text-ink">Cryptocurrency</p>
+            <p className="text-[14px] font-semibold text-ink">
+              Cryptocurrency<span className="text-red-500 ml-0.5">*</span>
+            </p>
             <p className="text-[12px] text-muted mt-0.5 leading-relaxed">
               Did you receive, sell, exchange, or otherwise dispose of any cryptocurrency in 2025?
             </p>

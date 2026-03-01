@@ -28,6 +28,7 @@ export function HealthInsuranceSection() {
       <div className="border border-hairline rounded-xl p-4 mb-4">
         <p className="text-[14px] text-ink font-medium mb-1">
           Did you have health insurance from the Marketplace (healthcare.gov)?
+          <span className="text-red-500 ml-0.5">*</span>
         </p>
         <p className="text-[12px] text-muted mb-4 leading-relaxed">
           You should have received <strong>Form 1095-A</strong> from the Marketplace if so.

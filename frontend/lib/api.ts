@@ -55,6 +55,18 @@ export const api = {
       request_pdf_upload: boolean
       pdf_upload_reason: string | null
       session_status: string
+      navigate_to_section: string | null
+      snapshot: {
+        tax_return: Record<string, unknown> | null
+        w2_forms: Record<string, unknown>[]
+        form_1099s: Record<string, unknown>[]
+        deductions: Record<string, unknown> | null
+        credits: Record<string, unknown> | null
+        other_income: Record<string, unknown> | null
+        dependents: Record<string, unknown>[]
+        misc_info: Record<string, unknown> | null
+        state_info: Record<string, unknown> | null
+      } | null
     }>('/chat', { session_id: sessionId, message }),
 
   uploadPdf: (sessionId: number, file: File) =>

@@ -8,6 +8,10 @@ import { ChatMessage } from './ChatMessage'
 import { PDFUploadCard } from './PDFUploadCard'
 import { ChatInput } from './ChatInput'
 import { CURRENT_TAX_YEAR } from '@/lib/dummyData'
+import type {
+  TaxReturn, W2Form, Form1099, Deductions, Credits,
+  OtherIncome, Dependent, MiscInfo, StateInfo,
+} from '@/lib/types'
 
 interface ChatPanelProps {
   backendDown?: boolean
@@ -27,6 +31,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     setMissingFields,
     setPhase,
     hydrateTaxData,
+    setActiveSection,
     phase,
     clearMessages,
     activeYear,
@@ -44,6 +49,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       setMissingFields: s.setMissingFields,
       setPhase: s.setPhase,
       hydrateTaxData: s.hydrateTaxData,
+      setActiveSection: s.setActiveSection,
       phase: s.phase,
       clearMessages: s.clearMessages,
       activeYear: s.activeYear,
@@ -53,10 +59,41 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
   const isPastYear = activeYear !== CURRENT_TAX_YEAR
 
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const hasGreeted = useRef(false)
+  const prevIsTyping = useRef(false)
+
+  // Focus input when response finishes (isTyping: true → false)
+  useEffect(() => {
+    if (prevIsTyping.current && !isTyping && phase !== 'filing' && !isPastYear) {
+      inputRef.current?.focus()
+    }
+    prevIsTyping.current = isTyping
+  }, [isTyping, phase, isPastYear])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
+
+  // Auto-send "start" on first visit to trigger CPA greeting
+  useEffect(() => {
+    if (!sessionId || backendDown || messages.length > 0 || hasGreeted.current) return
+    hasGreeted.current = true
+    setIsTyping(true)
+    api.chat(sessionId, 'start')
+      .then((res) => {
+        addMessage({ id: Date.now().toString(), role: 'assistant', content: res.reply })
+        if (res.navigate_to_section) setActiveSection(res.navigate_to_section)
+      })
+      .catch(() => {
+        addMessage({
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: "Hi! I'm April, your tax filing assistant. Send a message to get started.",
+        })
+      })
+      .finally(() => setIsTyping(false))
+  }, [sessionId, backendDown]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSend(message: string) {
     // Always add user message to the thread immediately
@@ -82,30 +119,37 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
         content: res.reply,
       })
 
+      // Navigate sidebar to the relevant section
+      if (res.navigate_to_section) setActiveSection(res.navigate_to_section)
+
       if (res.request_pdf_upload && res.pdf_upload_reason) {
         setPendingPdfUpload(true, res.pdf_upload_reason)
       }
 
-      // Refresh session status + latest data from DB
-      const [status, dbData] = await Promise.all([
-        api.sessionStatus(sessionId),
-        userId ? api.userData(userId) : Promise.resolve(null),
-      ])
-      setPercentComplete(status.percent_complete)
-      setMissingFields(status.missing_fields)
-
-      if (dbData && (dbData.tax_return || dbData.w2_forms.length > 0)) {
+      // If the agent saved any fields, snapshot is included — update UI directly
+      if (res.snapshot) {
         hydrateTaxData({
-          tax_return: dbData.tax_return as import('@/lib/types').TaxReturn,
-          w2_forms: dbData.w2_forms as import('@/lib/types').W2Form[],
-          form_1099s: dbData.form_1099s as import('@/lib/types').Form1099[],
-          deductions: dbData.deductions as import('@/lib/types').Deductions ?? undefined,
-          credits: dbData.credits as import('@/lib/types').Credits ?? undefined,
+          tax_return: res.snapshot.tax_return as TaxReturn ?? undefined,
+          w2_forms: (res.snapshot.w2_forms ?? []) as W2Form[],
+          form_1099s: (res.snapshot.form_1099s ?? []) as Form1099[],
+          deductions: res.snapshot.deductions as Deductions ?? undefined,
+          credits: res.snapshot.credits as Credits ?? undefined,
+          other_income: res.snapshot.other_income as OtherIncome ?? undefined,
+          dependents: (res.snapshot.dependents ?? []) as Dependent[],
+          misc_info: res.snapshot.misc_info as MiscInfo ?? undefined,
+          state_info: res.snapshot.state_info as StateInfo ?? undefined,
         })
       }
 
-      if (status.percent_complete === 100 && phase === 'collecting') {
-        setPhase('reviewing')
+      // Refresh progress stats (percent complete, missing fields)
+      if (sessionId) {
+        api.sessionStatus(sessionId).then((status) => {
+          setPercentComplete(status.percent_complete)
+          setMissingFields(status.missing_fields)
+          if (status.percent_complete === 100 && phase === 'collecting') {
+            setPhase('reviewing')
+          }
+        }).catch(() => {/* silently ignore */})
       }
     } catch {
       addMessage({
@@ -159,7 +203,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
 
       {/* Input */}
       <div className="px-4 pb-4 pt-2 border-t border-hairline flex-shrink-0">
-        <ChatInput onSend={handleSend} disabled={inputDisabled} />
+        <ChatInput ref={inputRef} onSend={handleSend} disabled={inputDisabled} />
       </div>
 
       {/* Past-year overlay */}

@@ -80,10 +80,11 @@ export default function Dashboard() {
     userEmail,
     setUser,
     setSession,
-    addMessage,
     setPercentComplete,
     setMissingFields,
     hydrateTaxData,
+    clearMessages,
+    resetTaxData,
   } = useStore(
     useShallow((s) => ({
       userId: s.userId,
@@ -91,10 +92,11 @@ export default function Dashboard() {
       userEmail: s.userEmail,
       setUser: s.setUser,
       setSession: s.setSession,
-      addMessage: s.addMessage,
       setPercentComplete: s.setPercentComplete,
       setMissingFields: s.setMissingFields,
       hydrateTaxData: s.hydrateTaxData,
+      clearMessages: s.clearMessages,
+      resetTaxData: s.resetTaxData,
     }))
   )
 
@@ -135,6 +137,7 @@ export default function Dashboard() {
           const user = await api.createUser(email)
           uid = user.user_id
           setUser(uid, email)
+          sid = null  // also reset session since user is new
         }
 
         if (!sid) {
@@ -143,14 +146,34 @@ export default function Dashboard() {
           setSession(sid)
         }
 
-        const [status, dbData] = await Promise.all([
-          api.sessionStatus(sid!),
-          api.userData(uid!),
-        ])
+        // Try to load status + data; if IDs are stale (404), create fresh user+session
+        let status, dbData
+        try {
+          ;[status, dbData] = await Promise.all([
+            api.sessionStatus(sid!),
+            api.userData(uid!),
+          ])
+        } catch {
+          // Stale IDs from a previous backend instance — create fresh user + session
+          clearMessages()
+          resetTaxData()
+          const email = `user_${Date.now()}@april.app`
+          const user = await api.createUser(email)
+          uid = user.user_id
+          setUser(uid, email)
+          const sess = await api.createSession(uid)
+          sid = sess.session_id
+          setSession(sid)
+          ;[status, dbData] = await Promise.all([
+            api.sessionStatus(sid),
+            api.userData(uid),
+          ])
+        }
+
         setPercentComplete(status.percent_complete)
         setMissingFields(status.missing_fields)
 
-        // Hydrate store from DB (extra_data wins in the API response)
+        // Hydrate store from DB
         if (dbData.tax_return || dbData.w2_forms.length > 0) {
           hydrateTaxData({
             tax_return: dbData.tax_return as import('@/lib/types').TaxReturn,
@@ -165,25 +188,8 @@ export default function Dashboard() {
           })
         }
 
-        // Use live state (not stale closure) to avoid React StrictMode double-add
-        const hasGreeting = useStore.getState().messages.some((m) => m.role === 'assistant')
-        if (!hasGreeting) {
-          addMessage({
-            id: `opening-${Date.now()}`,
-            role: 'assistant',
-            content: `Good morning! Let's get your ${CURRENT_TAX_YEAR} taxes filed. Do you have a W-2 from an employer this year?`,
-          })
-        }
       } catch {
         setBackendDown(true)
-        const hasGreeting = useStore.getState().messages.some((m) => m.role === 'assistant')
-        if (!hasGreeting) {
-          addMessage({
-            id: `opening-${Date.now()}`,
-            role: 'assistant',
-            content: `Good morning! Let's get your ${CURRENT_TAX_YEAR} taxes filed. (Note: backend is offline — start the FastAPI server at localhost:8000 to enable chat.)`,
-          })
-        }
       } finally {
         setInitialized(true)
       }

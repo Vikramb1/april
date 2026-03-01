@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/store'
 import { api } from '@/lib/api'
 import { PAST_YEAR_DATA } from '@/lib/dummyData'
+import { getMissingFields } from '@/lib/validation'
 
 function formatMoney(val: number | undefined) {
   if (val == null) return '—'
@@ -37,17 +39,17 @@ interface ReviewSectionProps {
 }
 
 export function ReviewSection({ frozenYear }: ReviewSectionProps) {
-  const { taxData: liveTaxData, userId, setPhase, resetFiling, addMessage, missingFields, percentComplete } = useStore(
+  const { taxData: liveTaxData, userId, setPhase, resetFiling, addMessage } = useStore(
     useShallow((s) => ({
       taxData: s.taxData,
       userId: s.userId,
       setPhase: s.setPhase,
       resetFiling: s.resetFiling,
       addMessage: s.addMessage,
-      missingFields: s.missingFields,
-      percentComplete: s.percentComplete,
     }))
   )
+
+  const [showModal, setShowModal] = useState(false)
 
   // Use dummy data for past years, live data for current year
   const taxData = frozenYear ? PAST_YEAR_DATA[frozenYear]?.taxData ?? liveTaxData : liveTaxData
@@ -61,6 +63,11 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
   const owed = tr.tax_owed as number | undefined
 
   async function handleFile() {
+    const missing = getMissingFields(taxData)
+    if (missing.length > 0) {
+      setShowModal(true)
+      return
+    }
     if (!userId) return
     resetFiling()
     setPhase('filing')
@@ -104,33 +111,46 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
         </tbody>
       </table>
 
-      {!frozenYear && (() => {
-        // Derive incomplete section names from missing fields
-        const incompleteSections = percentComplete > 0
-          ? [...new Set(missingFields.map((f) => f.split('.')[0]))]
-          : []
-        const canFile = incompleteSections.length === 0
+      {!frozenYear && (
+        <button
+          onClick={handleFile}
+          className="w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors cursor-pointer"
+        >
+          File My Return →
+        </button>
+      )}
 
+      {/* Validation modal */}
+      {showModal && (() => {
+        const missing = getMissingFields(taxData)
         return (
-          <div>
-            {!canFile && (
-              <div className="mb-4 p-3 bg-amber-pale border border-amber rounded-xl">
-                <p className="text-[13px] font-semibold text-amber mb-1">Cannot file yet</p>
-                <p className="text-[12px] text-ink mb-1">The following sections are incomplete:</p>
-                <ul className="list-disc list-inside">
-                  {incompleteSections.map((s) => (
-                    <li key={s} className="text-[12px] text-ink">{s}</li>
-                  ))}
-                </ul>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-amber text-[20px]">⚠</span>
+                <h3 className="text-[17px] font-bold text-ink">Cannot File Yet</h3>
               </div>
-            )}
-            <button
-              onClick={handleFile}
-              disabled={!canFile}
-              className="w-full bg-green text-white font-bold text-[15px] rounded-xl h-11 hover:bg-green-mid transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              File My Return →
-            </button>
+              <p className="text-[13px] text-muted mb-3">
+                Please complete the following required fields before filing:
+              </p>
+              <ul className="space-y-1.5 mb-5 max-h-64 overflow-y-auto">
+                {missing.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[13px]">
+                    <span className="text-red-500 font-bold flex-shrink-0 mt-0.5">•</span>
+                    <span>
+                      <span className="font-semibold text-ink">{item.section}:</span>{' '}
+                      <span className="text-muted">{item.label}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-full bg-green text-white font-semibold text-[14px] rounded-xl h-10 hover:bg-green-mid transition-colors cursor-pointer"
+              >
+                Go Back
+              </button>
+            </div>
           </div>
         )
       })()}

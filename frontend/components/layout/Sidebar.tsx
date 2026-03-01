@@ -10,6 +10,66 @@ import { SECTION_GROUPS } from "@/lib/types";
 import type { TaxData } from "@/lib/types";
 import { PAST_YEAR_DATA, CURRENT_TAX_YEAR } from "@/lib/dummyData";
 
+// ── Refund estimate helpers ──────────────────────────────────────────────────
+function calcTaxSingle(income: number): number {
+  if (income <= 0) return 0;
+  const brackets = [
+    { limit: 11925, rate: 0.10 }, { limit: 48475, rate: 0.12 },
+    { limit: 103350, rate: 0.22 }, { limit: 197300, rate: 0.24 },
+    { limit: 250525, rate: 0.32 }, { limit: 626350, rate: 0.35 },
+    { limit: Infinity, rate: 0.37 },
+  ];
+  let tax = 0; let prev = 0;
+  for (const { limit, rate } of brackets) {
+    if (income <= prev) break;
+    tax += (Math.min(income, limit) - prev) * rate;
+    prev = limit;
+  }
+  return Math.round(tax);
+}
+
+function calcTaxMFJ(income: number): number {
+  if (income <= 0) return 0;
+  const brackets = [
+    { limit: 23850, rate: 0.10 }, { limit: 96950, rate: 0.12 },
+    { limit: 206700, rate: 0.22 }, { limit: 394600, rate: 0.24 },
+    { limit: 501050, rate: 0.32 }, { limit: 751600, rate: 0.35 },
+    { limit: Infinity, rate: 0.37 },
+  ];
+  let tax = 0; let prev = 0;
+  for (const { limit, rate } of brackets) {
+    if (income <= prev) break;
+    tax += (Math.min(income, limit) - prev) * rate;
+    prev = limit;
+  }
+  return Math.round(tax);
+}
+
+const STD_DED: Record<string, number> = {
+  'Single': 15000, 'Married Filing Jointly': 30000,
+  'Married Filing Separately': 15000, 'Head of Household': 22500,
+  'Qualifying Surviving Spouse': 30000,
+};
+
+function computeRefundEstimate(taxData: TaxData | null): { amount: number; isRefund: boolean } | null {
+  if (!taxData) return null;
+  const w2s = taxData.w2_forms ?? [];
+  const totalWages = w2s.reduce((s, w) => s + (w.wages ?? 0), 0);
+  const totalWithheld = w2s.reduce((s, w) => s + (w.federal_tax_withheld ?? 0), 0);
+  if (totalWages === 0 && totalWithheld === 0) return null;
+  const filingStatus = taxData.tax_return?.filing_status ?? 'Single';
+  const deduction = STD_DED[filingStatus] ?? 15000;
+  const taxable = Math.max(0, totalWages - deduction);
+  const calcFn = filingStatus === 'Married Filing Jointly' ? calcTaxMFJ : calcTaxSingle;
+  const tax = calcFn(taxable);
+  const diff = totalWithheld - tax;
+  return { amount: Math.abs(diff), isRefund: diff >= 0 };
+}
+
+function fmtMoney(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+}
+
 // Optional sections are "complete" simply by being visited (nothing required)
 const OPTIONAL_SECTIONS = new Set([
   'dependents', 'common-credits', 'other-credits',
@@ -30,23 +90,37 @@ function isSectionComplete(key: string, taxData: TaxData | null, visited: boolea
 
   switch (key) {
     case 'personal-info':
-      return !!(tr.first_name && tr.last_name && tr.ssn && tr.address && tr.city && tr.state && tr.zip_code);
-    case 'filing-status':
-      return !!tr.filing_status;
+      return !!(tr.first_name && tr.last_name && tr.ssn && tr.date_of_birth &&
+                tr.address && tr.city && tr.state && tr.zip_code &&
+                tr.claimed_as_dependent && tr.nonresident_alien);
+    case 'filing-status': {
+      if (!tr.filing_status) return false;
+      if (tr.filing_status === 'Married Filing Jointly') {
+        return !!(tr.spouse_first_name && tr.spouse_last_name && tr.spouse_ssn);
+      }
+      return true;
+    }
     case 'identity-protection':
-      return !!tr.identity_protection_pin;
+      if (!tr.identity_protection_pin) return false;
+      if (tr.identity_protection_pin === 'Yes') return !!tr.identity_protection_pin_number;
+      return true;
     case 'w2-income':
       return w2s.length > 0 && w2s.every((w) => !!(w.employer_name && w.wages != null));
     case '1099-income': {
+      if (oi.has_1099_income === 'No') return true;
+      if (oi.has_1099_income !== 'Yes') return false;
       const forms = taxData?.form_1099s ?? [];
       return forms.length > 0 && forms.every((f) => !!f.payer_name);
     }
     case 'other-income':
       return !!oi.has_cryptocurrency;
-    case 'deductions':
+    case 'deductions': {
+      if (ded.has_itemized_deductions === 'No') return true;
+      if (ded.has_itemized_deductions !== 'Yes') return false;
       return [ded.has_homeowner, ded.has_donations, ded.has_medical, ded.has_taxes_paid,
               ded.has_investment_interest, ded.has_casualty, ded.has_other_itemized]
-        .some((v) => v !== undefined);
+        .some((v) => v === true);
+    }
     case 'health-insurance':
       return !!cred.has_marketplace_insurance;
     case 'refund-maximizer':
@@ -69,16 +143,33 @@ function isSectionStarted(key: string, taxData: TaxData | null): boolean {
   if (!taxData) return false;
   const tr = taxData.tax_return ?? {};
   const ded = taxData.deductions ?? {};
+  const oi = taxData.other_income ?? {};
 
   switch (key) {
     case 'personal-info': {
-      // Started if ANY field filled, but complete requires all
-      const hasAny = !!(tr.first_name || tr.last_name || tr.ssn || tr.address || tr.city || tr.state || tr.zip_code);
-      const hasAll = !!(tr.first_name && tr.last_name && tr.ssn && tr.address && tr.city && tr.state && tr.zip_code);
+      const hasAny = !!(tr.first_name || tr.last_name || tr.ssn || tr.date_of_birth ||
+                        tr.address || tr.city || tr.state || tr.zip_code);
+      const hasAll = !!(tr.first_name && tr.last_name && tr.ssn && tr.date_of_birth &&
+                        tr.address && tr.city && tr.state && tr.zip_code &&
+                        tr.claimed_as_dependent && tr.nonresident_alien);
       return hasAny && !hasAll;
     }
+    case '1099-income': {
+      // Amber if gate answered Yes but no forms added yet
+      if (oi.has_1099_income === 'Yes') {
+        const forms = taxData.form_1099s ?? [];
+        return forms.length === 0;
+      }
+      return false;
+    }
     case 'deductions': {
-      // Started if SOME categories toggled (deductions complete = any toggled, so this is never halfway)
+      // Amber if gate answered Yes but no categories toggled yet
+      if (ded.has_itemized_deductions === 'Yes') {
+        const anyToggled = [ded.has_homeowner, ded.has_donations, ded.has_medical, ded.has_taxes_paid,
+                            ded.has_investment_interest, ded.has_casualty, ded.has_other_itemized]
+          .some((v) => v === true);
+        return !anyToggled;
+      }
       return false;
     }
     default:
@@ -150,6 +241,22 @@ export function Sidebar() {
           subLabel={isPastYear ? "filed" : "complete"}
         />
       </div>
+
+      {/* Refund estimate card */}
+      {!isPastYear && (() => {
+        const est = computeRefundEstimate(taxData);
+        if (!est) return null;
+        return (
+          <div className={`mx-1 mb-3 px-3 py-2 rounded-xl border ${est.isRefund ? 'bg-green-pale border-green' : 'bg-amber/10 border-amber'}`}>
+            <p className={`text-[10px] uppercase tracking-widest font-semibold mb-0.5 ${est.isRefund ? 'text-green' : 'text-amber'}`}>
+              {est.isRefund ? 'Est. Refund' : 'Est. Owed'}
+            </p>
+            <p className={`text-[16px] font-bold font-mono ${est.isRefund ? 'text-green' : 'text-amber'}`}>
+              {fmtMoney(est.amount)}
+            </p>
+          </div>
+        );
+      })()}
 
       <div className="flex items-center justify-between mb-3 px-1">
         <p className="text-[10px] uppercase tracking-widest text-muted font-semibold">

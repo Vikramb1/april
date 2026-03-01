@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, forwardRef } from 'react'
 
 interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export const ChatInput = forwardRef<HTMLInputElement, ChatInputProps>(function ChatInput({ onSend, disabled }, ref) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const resolvedRef = (ref as React.RefObject<HTMLInputElement>) ?? inputRef
 
   function send() {
     const trimmed = value.trim()
@@ -30,7 +31,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       {/* Input row */}
       <div className="flex items-center border border-hairline rounded-xl bg-cream px-3 h-11">
         <input
-          ref={inputRef}
+          ref={resolvedRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKey}
@@ -51,4 +52,4 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       </div>
     </div>
   )
-}
+})

@@ -22,9 +22,10 @@ interface FieldRowProps {
   mono?: boolean
   masked?: boolean
   placeholder?: string
+  required?: boolean
 }
 
-function FieldRow({ label, value, onChange, mono, masked, placeholder }: FieldRowProps) {
+function FieldRow({ label, value, onChange, mono, masked, placeholder, required }: FieldRowProps) {
   const [editing, setEditing] = useState(false)
   const [localVal, setLocalVal] = useState(value)
 
@@ -32,7 +33,9 @@ function FieldRow({ label, value, onChange, mono, masked, placeholder }: FieldRo
 
   return (
     <div className="border-b border-hairline py-3">
-      <p className="text-[12px] text-muted mb-0.5">{label}</p>
+      <p className="text-[12px] text-muted mb-0.5">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </p>
       <input
         readOnly={!editing}
         value={editing ? localVal : displayVal}
@@ -52,12 +55,15 @@ interface SelectRowProps {
   onChange: (val: string) => void
   options: string[]
   placeholder?: string
+  required?: boolean
 }
 
-function SelectRow({ label, value, onChange, options, placeholder }: SelectRowProps) {
+function SelectRow({ label, value, onChange, options, placeholder, required }: SelectRowProps) {
   return (
     <div className="border-b border-hairline py-3">
-      <p className="text-[12px] text-muted mb-0.5">{label}</p>
+      <p className="text-[12px] text-muted mb-0.5">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </p>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -76,12 +82,15 @@ interface RadioRowProps {
   label: string
   value: string
   onChange: (val: string) => void
+  required?: boolean
 }
 
-function RadioRow({ label, value, onChange }: RadioRowProps) {
+function RadioRow({ label, value, onChange, required }: RadioRowProps) {
   return (
     <div className="border-b border-hairline py-3 flex items-center justify-between">
-      <p className="text-[13px] text-ink flex-1 pr-4">{label}</p>
+      <p className="text-[13px] text-ink flex-1 pr-4">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </p>
       <div className="flex gap-2 flex-shrink-0">
         {['Yes', 'No'].map((opt) => (
           <button
@@ -146,20 +155,20 @@ export function PersonalSection() {
       <h2 className="text-[18px] font-bold text-ink mb-4">Personal Information</h2>
 
       <SectionHeading title="Name" />
-      <FieldRow label="First Name" value={tr.first_name ?? ''} onChange={update('first_name')} placeholder="John" />
+      <FieldRow label="First Name" value={tr.first_name ?? ''} onChange={update('first_name')} placeholder="John" required />
       <FieldRow label="Middle Initial" value={tr.middle_initial ?? ''} onChange={update('middle_initial')} placeholder="M" />
-      <FieldRow label="Last Name" value={tr.last_name ?? ''} onChange={update('last_name')} placeholder="Doe" />
+      <FieldRow label="Last Name" value={tr.last_name ?? ''} onChange={update('last_name')} placeholder="Doe" required />
       <SelectRow label="Suffix" value={tr.suffix ?? ''} onChange={update('suffix') as (v: string) => void} options={SUFFIXES} placeholder="None" />
 
       <SectionHeading title="Contact & Address" />
-      <FieldRow label="Social Security Number" value={tr.ssn ?? ''} onChange={update('ssn')} masked mono placeholder="XXX-XX-XXXX" />
-      <FieldRow label="Date of Birth" value={tr.date_of_birth ?? ''} onChange={update('date_of_birth')} mono placeholder="YYYY-MM-DD" />
+      <FieldRow label="Social Security Number" value={tr.ssn ?? ''} onChange={update('ssn')} masked mono placeholder="XXX-XX-XXXX" required />
+      <FieldRow label="Date of Birth" value={tr.date_of_birth ?? ''} onChange={update('date_of_birth')} mono placeholder="YYYY-MM-DD" required />
       <FieldRow label="Occupation" value={tr.occupation ?? ''} onChange={update('occupation')} placeholder="Software Engineer" />
-      <FieldRow label="Street Address" value={tr.address ?? ''} onChange={update('address')} placeholder="123 Main St" />
+      <FieldRow label="Street Address" value={tr.address ?? ''} onChange={update('address')} placeholder="123 Main St" required />
       <FieldRow label="Apt #" value={tr.apt ?? ''} onChange={update('apt')} placeholder="Apt 4B (optional)" />
-      <FieldRow label="City" value={tr.city ?? ''} onChange={update('city')} placeholder="New York" />
-      <SelectRow label="State" value={tr.state ?? ''} onChange={update('state') as (v: string) => void} options={US_STATES} />
-      <FieldRow label="ZIP Code" value={tr.zip_code ?? ''} onChange={update('zip_code')} mono placeholder="10001" />
+      <FieldRow label="City" value={tr.city ?? ''} onChange={update('city')} placeholder="New York" required />
+      <SelectRow label="State" value={tr.state ?? ''} onChange={update('state') as (v: string) => void} options={US_STATES} required />
+      <FieldRow label="ZIP Code" value={tr.zip_code ?? ''} onChange={update('zip_code')} mono placeholder="10001" required />
       <FieldRow label="ZIP+4" value={tr.zip_plus_4 ?? ''} onChange={update('zip_plus_4')} mono placeholder="1234" />
       <CheckboxRow
         label="Address changed since last return"
@@ -172,6 +181,7 @@ export function PersonalSection() {
         label="Claimed as dependent on someone else's return?"
         value={tr.claimed_as_dependent ?? ''}
         onChange={update('claimed_as_dependent') as (v: string) => void}
+        required
       />
       <RadioRow
         label="Presidential Election Campaign Fund ($3)?"
@@ -190,6 +200,7 @@ export function PersonalSection() {
       />
       <RadioRow
         label="Are you a Nonresident Alien?"
+        required
         value={tr.nonresident_alien ?? ''}
         onChange={update('nonresident_alien') as (v: string) => void}
       />

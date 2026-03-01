@@ -34,6 +34,8 @@ class ChatResponse(BaseModel):
     request_pdf_upload: bool = False
     pdf_upload_reason: Optional[str] = None
     session_status: str
+    navigate_to_section: Optional[str] = None
+    snapshot: Optional[dict] = None   # full user data after saves, for direct UI hydration
 
 
 # ── PDF Upload ─────────────────────────────────────────────────────────────

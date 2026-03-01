@@ -112,6 +112,8 @@ export interface TaxReturn {
 }
 
 export interface Deductions {
+  // Gate question
+  has_itemized_deductions?: string   // 'Yes' | 'No'
   // Standard vs itemized helper
   standard_deduction?: number
   itemized_deduction?: number
@@ -190,6 +192,7 @@ export interface Credits {
 
 // Pages 11-13 — Other income types
 export interface OtherIncome {
+  has_1099_income?: string          // 'Yes' | 'No'
   has_cryptocurrency?: string       // 'Yes' | 'No'
   has_investments?: boolean
   investment_income?: number

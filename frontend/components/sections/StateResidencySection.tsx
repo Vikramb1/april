@@ -31,15 +31,19 @@ function YesNoRow({
   description,
   value,
   onChange,
+  required,
 }: {
   question: string
   description?: string
   value?: string
   onChange: (v: string) => void
+  required?: boolean
 }) {
   return (
     <div className="border border-hairline rounded-xl p-4 mb-3 bg-white">
-      <p className="text-[14px] font-semibold text-ink mb-1">{question}</p>
+      <p className="text-[14px] font-semibold text-ink mb-1">
+        {question}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </p>
       {description && (
         <p className="text-[12px] text-muted mb-3 leading-relaxed">{description}</p>
       )}
@@ -95,7 +99,9 @@ export function StateResidencySection() {
 
       {/* State selector */}
       <div className="border border-hairline rounded-xl p-4 mb-4 bg-white">
-        <p className="text-[14px] font-semibold text-ink mb-3">Which state did you live in during 2025?</p>
+        <p className="text-[14px] font-semibold text-ink mb-3">
+          Which state did you live in during 2025?<span className="text-red-500 ml-0.5">*</span>
+        </p>
         <select
           value={stateCode}
           onChange={(e) => updateState(e.target.value)}
@@ -129,6 +135,7 @@ export function StateResidencySection() {
             description="Answer Yes if you lived there at any point during the year."
             value={state.is_state_resident}
             onChange={(v) => update({ is_state_resident: v })}
+            required
           />
 
           {state.is_state_resident === 'Yes' && (

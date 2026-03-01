@@ -97,6 +97,7 @@ export function DeductionsSection() {
 
   const filingStatus = taxData?.tax_return?.filing_status ?? 'Single'
   const standardDeduction = STANDARD_DEDUCTIONS[filingStatus] ?? 15000
+  const hasItemized = ded.has_itemized_deductions ?? ''
 
   // Compute itemized total
   const mortgage = ded.has_homeowner ? (ded.mortgage_interest ?? 0) : 0
@@ -118,149 +119,185 @@ export function DeductionsSection() {
     <div>
       <h2 className="text-[18px] font-bold text-ink mb-1">Itemized Deductions</h2>
       <p className="text-[13px] text-muted mb-4">
-        Select all categories that apply. April will compare your itemized total against the
-        standard deduction and choose whichever is larger.
+        April will compare your itemized total against the standard deduction and choose whichever is larger.
       </p>
 
-      {/* Comparison card */}
-      <div
-        className={clsx(
-          'rounded-xl p-4 mb-5 border',
-          useItemized ? 'bg-green-pale border-green' : 'bg-cream border-hairline',
-        )}
-      >
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <p className="text-[11px] text-muted uppercase tracking-wide font-semibold">Standard</p>
-            <p className="font-mono text-[18px] font-bold text-ink">{fmt(standardDeduction)}</p>
-            <p className="text-[11px] text-muted">{filingStatus}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] text-muted uppercase tracking-wide font-semibold">Your Itemized</p>
-            <p
-              className={`font-mono text-[18px] font-bold ${
-                totalItemized > 0 ? 'text-ink' : 'text-muted'
-              }`}
-            >
-              {totalItemized > 0 ? fmt(totalItemized) : '—'}
-            </p>
-            {saltCapped < stateTax + propertyTax && (
-              <p className="text-[10px] text-muted">SALT capped at {fmt(10000)}</p>
-            )}
-          </div>
-        </div>
-        <p className={`text-[13px] font-semibold ${useItemized ? 'text-green' : 'text-ink'}`}>
-          {useItemized
-            ? `Itemizing saves you ${fmt(totalItemized - standardDeduction)} more`
-            : 'Standard deduction is recommended — add expenses below if you have them'}
+      {/* Gate question */}
+      <div className="border border-hairline rounded-xl p-4 mb-4 bg-white">
+        <p className="text-[14px] font-medium text-ink mb-3">
+          Do you have itemized deductions to report?
+          <span className="text-red-500 ml-0.5">*</span>
         </p>
+        <div className="flex gap-2">
+          {(['Yes', 'No'] as const).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => update({ has_itemized_deductions: hasItemized === opt ? undefined : opt })}
+              className={clsx(
+                'rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors border cursor-pointer',
+                hasItemized === opt
+                  ? 'bg-green text-white border-green'
+                  : 'border-hairline text-muted hover:border-green hover:text-ink',
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <CategoryCard
-        label="Home Ownership"
-        description="Mortgage interest (Form 1098) and property taxes on your primary and second home."
-        on={!!ded.has_homeowner}
-        onToggle={(v) => update({ has_homeowner: v })}
-      >
-        <AmountField
-          label="Mortgage Interest (Form 1098)"
-          value={ded.mortgage_interest}
-          onChange={(v) => update({ mortgage_interest: v })}
-        />
-        <AmountField
-          label="Property Taxes"
-          value={ded.property_taxes}
-          onChange={(v) => update({ property_taxes: v })}
-        />
-      </CategoryCard>
+      {/* Standard deduction card when No */}
+      {hasItemized === 'No' && (
+        <div className="p-4 bg-green-pale border border-green rounded-xl mb-4">
+          <p className="text-[14px] font-semibold text-green mb-1">Standard Deduction Applied</p>
+          <p className="text-[13px] text-ink">
+            You&apos;ll take the standard deduction of{' '}
+            <span className="font-mono font-semibold">{fmt(standardDeduction)}</span>{' '}
+            for {filingStatus}.
+          </p>
+        </div>
+      )}
 
-      <CategoryCard
-        label="Charitable Donations"
-        description="Cash and non-cash donations to qualifying 501(c)(3) organizations."
-        on={!!ded.has_donations}
-        onToggle={(v) => update({ has_donations: v })}
-      >
-        <AmountField
-          label="Cash Donations"
-          value={ded.cash_donations}
-          onChange={(v) => update({ cash_donations: v })}
-        />
-        <AmountField
-          label="Non-Cash Donations"
-          value={ded.noncash_donations}
-          onChange={(v) => update({ noncash_donations: v })}
-        />
-      </CategoryCard>
+      {/* Itemized deductions UI when Yes */}
+      {hasItemized === 'Yes' && (
+        <>
+          {/* Comparison card */}
+          <div
+            className={clsx(
+              'rounded-xl p-4 mb-5 border',
+              useItemized ? 'bg-green-pale border-green' : 'bg-cream border-hairline',
+            )}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <p className="text-[11px] text-muted uppercase tracking-wide font-semibold">Standard</p>
+                <p className="font-mono text-[18px] font-bold text-ink">{fmt(standardDeduction)}</p>
+                <p className="text-[11px] text-muted">{filingStatus}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] text-muted uppercase tracking-wide font-semibold">Your Itemized</p>
+                <p className={`font-mono text-[18px] font-bold ${totalItemized > 0 ? 'text-ink' : 'text-muted'}`}>
+                  {totalItemized > 0 ? fmt(totalItemized) : '—'}
+                </p>
+                {saltCapped < stateTax + propertyTax && (
+                  <p className="text-[10px] text-muted">SALT capped at {fmt(10000)}</p>
+                )}
+              </div>
+            </div>
+            <p className={`text-[13px] font-semibold ${useItemized ? 'text-green' : 'text-ink'}`}>
+              {useItemized
+                ? `Itemizing saves you ${fmt(totalItemized - standardDeduction)} more`
+                : 'Standard deduction is recommended — add expenses below if you have them'}
+            </p>
+          </div>
 
-      <CategoryCard
-        label="Medical &amp; Dental Expenses"
-        description="Qualifying medical expenses that exceed 7.5% of your AGI. Includes insurance premiums, prescriptions, and out-of-pocket costs."
-        on={!!ded.has_medical}
-        onToggle={(v) => update({ has_medical: v })}
-      >
-        <AmountField
-          label="Total Medical Expenses"
-          value={ded.medical_expenses}
-          onChange={(v) => update({ medical_expenses: v })}
-        />
-      </CategoryCard>
+          <CategoryCard
+            label="Home Ownership"
+            description="Mortgage interest (Form 1098) and property taxes on your primary and second home."
+            on={!!ded.has_homeowner}
+            onToggle={(v) => update({ has_homeowner: v })}
+          >
+            <AmountField
+              label="Mortgage Interest (Form 1098)"
+              value={ded.mortgage_interest}
+              onChange={(v) => update({ mortgage_interest: v })}
+            />
+            <AmountField
+              label="Property Taxes"
+              value={ded.property_taxes}
+              onChange={(v) => update({ property_taxes: v })}
+            />
+          </CategoryCard>
 
-      <CategoryCard
-        label="Taxes Paid (SALT)"
-        description="State &amp; local income or sales taxes. Combined with property taxes, capped at $10,000."
-        on={!!ded.has_taxes_paid}
-        onToggle={(v) => update({ has_taxes_paid: v })}
-      >
-        <AmountField
-          label="State &amp; Local Income Tax"
-          value={ded.state_local_income_tax}
-          onChange={(v) => update({ state_local_income_tax: v })}
-        />
-        <AmountField
-          label="State &amp; Local Sales Tax (if higher)"
-          value={ded.state_local_sales_tax}
-          onChange={(v) => update({ state_local_sales_tax: v })}
-        />
-      </CategoryCard>
+          <CategoryCard
+            label="Charitable Donations"
+            description="Cash and non-cash donations to qualifying 501(c)(3) organizations."
+            on={!!ded.has_donations}
+            onToggle={(v) => update({ has_donations: v })}
+          >
+            <AmountField
+              label="Cash Donations"
+              value={ded.cash_donations}
+              onChange={(v) => update({ cash_donations: v })}
+            />
+            <AmountField
+              label="Non-Cash Donations"
+              value={ded.noncash_donations}
+              onChange={(v) => update({ noncash_donations: v })}
+            />
+          </CategoryCard>
 
-      <CategoryCard
-        label="Investment Interest Expense"
-        description="Interest paid on money borrowed to purchase taxable investments (e.g., margin interest)."
-        on={!!ded.has_investment_interest}
-        onToggle={(v) => update({ has_investment_interest: v })}
-      >
-        <AmountField
-          label="Investment Interest Paid"
-          value={ded.investment_interest}
-          onChange={(v) => update({ investment_interest: v })}
-        />
-      </CategoryCard>
+          <CategoryCard
+            label="Medical &amp; Dental Expenses"
+            description="Qualifying medical expenses that exceed 7.5% of your AGI. Includes insurance premiums, prescriptions, and out-of-pocket costs."
+            on={!!ded.has_medical}
+            onToggle={(v) => update({ has_medical: v })}
+          >
+            <AmountField
+              label="Total Medical Expenses"
+              value={ded.medical_expenses}
+              onChange={(v) => update({ medical_expenses: v })}
+            />
+          </CategoryCard>
 
-      <CategoryCard
-        label="Casualty &amp; Theft Losses"
-        description="Losses from a federally declared disaster. Personal casualty losses are generally only deductible if in a federal disaster area."
-        on={!!ded.has_casualty}
-        onToggle={(v) => update({ has_casualty: v })}
-      >
-        <AmountField
-          label="Net Casualty / Theft Loss"
-          value={ded.casualty_loss}
-          onChange={(v) => update({ casualty_loss: v })}
-        />
-      </CategoryCard>
+          <CategoryCard
+            label="Taxes Paid (SALT)"
+            description="State &amp; local income or sales taxes. Combined with property taxes, capped at $10,000."
+            on={!!ded.has_taxes_paid}
+            onToggle={(v) => update({ has_taxes_paid: v })}
+          >
+            <AmountField
+              label="State &amp; Local Income Tax"
+              value={ded.state_local_income_tax}
+              onChange={(v) => update({ state_local_income_tax: v })}
+            />
+            <AmountField
+              label="State &amp; Local Sales Tax (if higher)"
+              value={ded.state_local_sales_tax}
+              onChange={(v) => update({ state_local_sales_tax: v })}
+            />
+          </CategoryCard>
 
-      <CategoryCard
-        label="Other Itemized Deductions"
-        description="Gambling losses up to winnings, impairment-related work expenses, and certain other allowable deductions."
-        on={!!ded.has_other_itemized}
-        onToggle={(v) => update({ has_other_itemized: v })}
-      >
-        <AmountField
-          label="Other Deductions"
-          value={ded.other_itemized}
-          onChange={(v) => update({ other_itemized: v })}
-        />
-      </CategoryCard>
+          <CategoryCard
+            label="Investment Interest Expense"
+            description="Interest paid on money borrowed to purchase taxable investments (e.g., margin interest)."
+            on={!!ded.has_investment_interest}
+            onToggle={(v) => update({ has_investment_interest: v })}
+          >
+            <AmountField
+              label="Investment Interest Paid"
+              value={ded.investment_interest}
+              onChange={(v) => update({ investment_interest: v })}
+            />
+          </CategoryCard>
+
+          <CategoryCard
+            label="Casualty &amp; Theft Losses"
+            description="Losses from a federally declared disaster. Personal casualty losses are generally only deductible if in a federal disaster area."
+            on={!!ded.has_casualty}
+            onToggle={(v) => update({ has_casualty: v })}
+          >
+            <AmountField
+              label="Net Casualty / Theft Loss"
+              value={ded.casualty_loss}
+              onChange={(v) => update({ casualty_loss: v })}
+            />
+          </CategoryCard>
+
+          <CategoryCard
+            label="Other Itemized Deductions"
+            description="Gambling losses up to winnings, impairment-related work expenses, and certain other allowable deductions."
+            on={!!ded.has_other_itemized}
+            onToggle={(v) => update({ has_other_itemized: v })}
+          >
+            <AmountField
+              label="Other Deductions"
+              value={ded.other_itemized}
+              onChange={(v) => update({ other_itemized: v })}
+            />
+          </CategoryCard>
+        </>
+      )}
     </div>
   )
 }

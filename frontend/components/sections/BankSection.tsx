@@ -54,7 +54,9 @@ export function BankSection() {
 
       {/* Refund delivery method */}
       <div className="mb-5">
-        <p className="text-[13px] font-semibold text-ink mb-2">How would you like to receive your refund?</p>
+        <p className="text-[13px] font-semibold text-ink mb-2">
+          How would you like to receive your refund?<span className="text-red-500 ml-0.5">*</span>
+        </p>
         <div className="flex flex-col gap-2">
           {[
             { key: 'direct_deposit', label: 'Direct Deposit', desc: 'Fastest option — deposited directly into your bank account.' },

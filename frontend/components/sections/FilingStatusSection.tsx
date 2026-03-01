@@ -34,7 +34,9 @@ export function FilingStatusSection() {
 
   return (
     <div>
-      <h2 className="text-[18px] font-bold text-ink mb-1">Filing Status</h2>
+      <h2 className="text-[18px] font-bold text-ink mb-1">
+        Filing Status<span className="text-red-500 ml-0.5">*</span>
+      </h2>
       <p className="text-[13px] text-muted mb-5">
         Choose the filing status that best describes your situation on December 31, 2025.
       </p>
@@ -78,7 +80,7 @@ export function FilingStatusSection() {
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[11px] text-muted mb-0.5">Spouse First Name</p>
+              <p className="text-[11px] text-muted mb-0.5">Spouse First Name<span className="text-red-500 ml-0.5">*</span></p>
               <input
                 value={taxData?.tax_return?.spouse_first_name ?? ''}
                 onChange={(e) =>
@@ -92,7 +94,7 @@ export function FilingStatusSection() {
               />
             </div>
             <div>
-              <p className="text-[11px] text-muted mb-0.5">Spouse Last Name</p>
+              <p className="text-[11px] text-muted mb-0.5">Spouse Last Name<span className="text-red-500 ml-0.5">*</span></p>
               <input
                 value={taxData?.tax_return?.spouse_last_name ?? ''}
                 onChange={(e) =>
@@ -106,7 +108,7 @@ export function FilingStatusSection() {
               />
             </div>
             <div>
-              <p className="text-[11px] text-muted mb-0.5">Spouse SSN</p>
+              <p className="text-[11px] text-muted mb-0.5">Spouse SSN<span className="text-red-500 ml-0.5">*</span></p>
               <input
                 value={taxData?.tax_return?.spouse_ssn ?? ''}
                 onChange={(e) =>

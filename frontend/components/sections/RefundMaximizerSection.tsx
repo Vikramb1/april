@@ -21,6 +21,10 @@ export function RefundMaximizerSection() {
         April can review your return for additional deductions and credits you may have missed.
       </p>
 
+      <p className="text-[14px] font-medium text-ink mb-3">
+        How would you like to proceed?<span className="text-red-500 ml-0.5">*</span>
+      </p>
+
       <div className="flex flex-col gap-3">
         <div
           onClick={() => update({ refund_maximizer: 'maximize' })}
