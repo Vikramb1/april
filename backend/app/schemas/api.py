@@ -93,31 +93,8 @@ class UpdateDataRequest(BaseModel):
 
 
 # ── Gusto W-2 Fetch ──────────────────────────────────────────────────
-class GustoLoginRequest(BaseModel):
-    user_id: int
-
-
-class GustoLoginResponse(BaseModel):
-    profile_id: str
-    session_id: str
-    live_url: str
-    message: str
-
-
-class CompleteGustoLoginRequest(BaseModel):
-    session_id: str
-    profile_id: str
-
-
-class CompleteGustoLoginResponse(BaseModel):
-    success: bool
-    output: str
-    profile_id: str
-
-
 class FetchGustoW2Request(BaseModel):
     user_id: int
-    session_id: str
 
 
 class FetchGustoW2Response(BaseModel):

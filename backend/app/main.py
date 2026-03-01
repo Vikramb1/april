@@ -18,13 +18,12 @@ from app.schemas.api import (
     RetrySectionRequest,
     UserDataResponse,
     UpdateDataRequest,
-    GustoLoginRequest, GustoLoginResponse,
     FetchGustoW2Request, FetchGustoW2Response,
 )
 from app.services.chat_agent import run_chat_turn
 from app.services.pdf_parser import parse_tax_pdf
 from app.services.browser_agent import run_submission, run_section
-from app.services.gusto_agent import start_gusto_login, fetch_w2_from_session
+from app.services.gusto_agent import start_gusto_w2_task, get_gusto_w2_result
 from app.services.field_loader import get_all_required_fields
 
 
@@ -238,40 +237,29 @@ def get_user_data(user_id: int, db: Session = Depends(get_db)):
     )
 
 
-# ── POST /gusto-login ────────────────────────────────────────────────
-@app.post("/gusto-login", response_model=GustoLoginResponse)
-async def gusto_login(body: GustoLoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter_by(id=body.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    result = await start_gusto_login()
-
-    return GustoLoginResponse(
-        profile_id=result["profile_id"],
-        session_id=result["session_id"],
-        live_url=result["live_url"],
-        message=(
-            "Agent logged in with your credentials. "
-            "Open live_url to enter your MFA code. "
-            "Once you're on the dashboard, call POST /complete-gusto-login."
-        ),
-    )
-
-
 # ── POST /fetch-gusto-w2 ─────────────────────────────────────────────
 @app.post("/fetch-gusto-w2", response_model=FetchGustoW2Response)
 async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db)):
-    """Fetch W-2 from Gusto using an active logged-in session.
+    """Fetch W-2 from Gusto via browser automation.
 
-    Call /gusto-login first, enter MFA, then call this with the same session_id.
+    Starts a browser-use cloud task that logs into Gusto (if needed),
+    navigates to Recent Documents, and downloads the W-2 PDF.
+    If MFA is required, enter the code at the live_url logged to console.
     """
     user = db.query(User).filter_by(id=body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Start the task and get live_url + task_id
+    task_info = await start_gusto_w2_task()
+    import logging
+    logging.getLogger("uvicorn").info(
+        f"Gusto live URL (enter MFA here if needed): {task_info['live_url']}"
+    )
+
+    # Wait for the task to complete and get PDF bytes
     try:
-        pdf_bytes = await fetch_w2_from_session(body.session_id)
+        pdf_bytes = await get_gusto_w2_result(task_info["task_id"])
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
