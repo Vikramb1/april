@@ -44,39 +44,18 @@
           ]
         },
         {
-          "id": "tp_occupation",
-          "label": "Occupation",
-          "type": "text",
-          "required": false,
-          "validation": "maxlength=30"
-        },
-        {
-          "id": "tp_ssn",
-          "label": "Social Security Number",
-          "type": "text",
-          "required": true,
-          "validation": "SSN format XXX-XX-XXXX"
-        },
-        {
-          "id": "tp_birth_date",
-          "label": "Date of Birth",
-          "type": "date",
-          "required": true,
-          "validation": "MM/DD/YYYY format"
-        },
-        {
           "id": "tp_address",
-          "label": "Address",
+          "label": "Street Address",
           "type": "text",
           "required": true,
           "validation": "maxlength=35"
         },
         {
           "id": "tp_apt",
-          "label": "Apt, Suite, Other",
+          "label": "Apt#",
           "type": "text",
           "required": false,
-          "validation": "maxlength=7"
+          "validation": "maxlength=5"
         },
         {
           "id": "tp_city",
@@ -106,6 +85,7 @@
             "DC",
             "FL",
             "GA",
+            "GU",
             "HI",
             "ID",
             "IL",
@@ -134,6 +114,7 @@
             "OK",
             "OR",
             "PA",
+            "PR",
             "RI",
             "SC",
             "SD",
@@ -141,6 +122,7 @@
             "TX",
             "UT",
             "VT",
+            "VI",
             "VA",
             "WA",
             "WV",
@@ -150,38 +132,48 @@
         },
         {
           "id": "tp_zip",
-          "label": "ZIP Code",
+          "label": "ZIP",
           "type": "text",
           "required": true,
-          "validation": "5 digits"
+          "validation": "maxlength=5"
         },
         {
-          "id": "tp_zip_plus4",
+          "id": "tp_zip_plus_4",
           "label": "ZIP + 4",
           "type": "text",
           "required": false,
-          "validation": "4 digits"
+          "validation": "maxlength=4"
         },
         {
-          "id": "changed_address",
-          "label": "My address has changed since I last filed",
+          "id": "addr_changed",
+          "label": "Address changed since last return",
           "type": "checkbox",
           "required": false
         },
         {
-          "id": "can_claim_you",
-          "label": "Can someone claim you or your spouse as a dependent?",
-          "type": "radio",
-          "required": true,
-          "options": [
-            "Yes",
-            "No",
-            "I'm not sure"
-          ]
+          "id": "tp_occupation",
+          "label": "Occupation",
+          "type": "text",
+          "required": false,
+          "validation": "maxlength=30"
         },
         {
-          "id": "pres_campaign_tp",
-          "label": "Presidential Election Campaign (Taxpayer)",
+          "id": "tp_ssn_1",
+          "label": "Social Security Number",
+          "type": "text",
+          "required": true,
+          "validation": "XXX-XX-XXXX"
+        },
+        {
+          "id": "tp_dob_1",
+          "label": "Date of Birth",
+          "type": "date",
+          "required": true,
+          "validation": "MM/DD/YYYY"
+        },
+        {
+          "id": "tp_on_return",
+          "label": "Will you be claimed as a dependent on someone else's return?",
           "type": "radio",
           "required": true,
           "options": [
@@ -190,8 +182,18 @@
           ]
         },
         {
+          "id": "tp_pres_elec_y",
+          "label": "Presidential Election Campaign Fund - Do you want $3 to go to this fund?",
+          "type": "radio",
+          "required": false,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
           "id": "tp_blind",
-          "label": "Are you blind?",
+          "label": "Were you blind on 12/31/2024?",
           "type": "radio",
           "required": true,
           "options": [
@@ -201,17 +203,17 @@
         },
         {
           "id": "tp_deceased",
-          "label": "Did the taxpayer pass away in 2024?",
+          "label": "Did you pass away in 2024?",
           "type": "radio",
-          "required": true,
+          "required": false,
           "options": [
             "Yes",
             "No"
           ]
         },
         {
-          "id": "tp_nonresident",
-          "label": "Are you a nonresident alien?",
+          "id": "tp_nonresident_alien",
+          "label": "Are you a Nonresident Alien?",
           "type": "radio",
           "required": true,
           "options": [
@@ -229,7 +231,7 @@
       "fields": [
         {
           "id": "screen_file_status",
-          "label": "Select your filing status",
+          "label": "What is your filing status?",
           "type": "radio",
           "required": true,
           "options": [
@@ -238,13 +240,13 @@
             "Married Filing Separately",
             "Head of Household",
             "Qualifying Surviving Spouse",
-            "I'm not sure - help me decide"
+            "Help me decide"
           ]
         }
       ]
     },
     {
-      "page_title": "Dependents",
+      "page_title": "Add a Dependent",
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Personal Information",
       "page_order": 3,
@@ -257,8 +259,8 @@
       "page_order": 4,
       "fields": [
         {
-          "id": "is_ippin_letter",
-          "label": "Did you receive an Identity Protection PIN letter from the IRS?",
+          "id": "tp_has_identity_protect_pin",
+          "label": "Do you have an Identity Protection PIN from the IRS?",
           "type": "radio",
           "required": true,
           "options": [
@@ -269,10 +271,635 @@
       ]
     },
     {
-      "page_title": "Deluxe gives you more",
+      "page_title": "Deluxe Upsell",
       "page_url_pattern": "/taxes2025/taxcontrol",
-      "section": "Promotional",
+      "section": "Personal Information",
       "page_order": 5,
+      "fields": []
+    },
+    {
+      "page_title": "Transition Page",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Personal Information",
+      "page_order": 6,
+      "fields": []
+    },
+    {
+      "page_title": "Your Wages (W-2)",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 7,
+      "fields": []
+    },
+    {
+      "page_title": "Edit W-2: Acme Corp Wages",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 8,
+      "fields": [
+        {
+          "id": "ssn_display",
+          "label": "Box A - Employee's Social Security Number",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "emp_id_e",
+          "label": "Box b - Employer Identification Number (EIN)",
+          "type": "text",
+          "required": true,
+          "validation": "XX-XXXXXXX"
+        },
+        {
+          "id": "emp_name",
+          "label": "Box c - Employer's Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "is_foreign_emp",
+          "label": "Employer Address Type",
+          "type": "select",
+          "required": false,
+          "options": [
+            "U.S. Address",
+            "Foreign Address"
+          ]
+        },
+        {
+          "id": "emp_address",
+          "label": "Employer's Address",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "emp_city",
+          "label": "Employer's City",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "emp_state",
+          "label": "Employer's State",
+          "type": "select",
+          "required": true,
+          "options": [
+            "(blank)",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "AA",
+            "AE",
+            "AP",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "DC",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VI",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+          ]
+        },
+        {
+          "id": "emp_zip",
+          "label": "Employer's ZIP Code",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "p_name",
+          "label": "Box e - Employee's Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "is_foreign_add",
+          "label": "Employee Address Type",
+          "type": "select",
+          "required": false,
+          "options": [
+            "U.S. Address",
+            "Foreign Address"
+          ]
+        },
+        {
+          "id": "p_address",
+          "label": "Employee's Address",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "p_city",
+          "label": "Employee's City",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "p_state",
+          "label": "Employee's State",
+          "type": "select",
+          "required": true,
+          "options": [
+            "(blank)",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "AA",
+            "AE",
+            "AP",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "DC",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VI",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+          ]
+        },
+        {
+          "id": "p_zip",
+          "label": "Employee's ZIP Code",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "wages",
+          "label": "Box 1 - Wages, tips, other compensation",
+          "type": "number",
+          "required": true
+        },
+        {
+          "id": "fed_tax",
+          "label": "Box 2 - Federal income tax withheld",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "ss_wages",
+          "label": "Box 3 - Social Security wages",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "ss_tax",
+          "label": "Box 4 - Social Security tax withheld",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "mc_wages",
+          "label": "Box 5 - Medicare wages and tips",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "mc_tax",
+          "label": "Box 6 - Medicare tax withheld",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "ss_tips",
+          "label": "Box 7 - Social Security tips",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "allocate_tips",
+          "label": "Box 8 - Allocated tips",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "depend_care",
+          "label": "Box 10 - Dependent care benefits",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "nonqual_plan",
+          "label": "Box 11 - Nonqualified plans",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "emp_use_c1",
+          "label": "Box 12 - Code 1",
+          "type": "select",
+          "required": false,
+          "options": [
+            "(blank)",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "V",
+            "W",
+            "Y",
+            "Z",
+            "AA",
+            "BB",
+            "DD",
+            "EE",
+            "FF",
+            "GG",
+            "HH"
+          ]
+        },
+        {
+          "id": "emp_use_a1",
+          "label": "Box 12 - Amount 1",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "emp_use_c2",
+          "label": "Box 12 - Code 2",
+          "type": "select",
+          "required": false,
+          "options": [
+            "(blank)",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "V",
+            "W",
+            "Y",
+            "Z",
+            "AA",
+            "BB",
+            "DD",
+            "EE",
+            "FF",
+            "GG",
+            "HH"
+          ]
+        },
+        {
+          "id": "emp_use_a2",
+          "label": "Box 12 - Amount 2",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "is_stat_emp",
+          "label": "Box 13 - Statutory employee",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_retire",
+          "label": "Box 13 - Retirement plan",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "is_3rd_sick_pay",
+          "label": "Box 13 - Third-party sick pay",
+          "type": "checkbox",
+          "required": false
+        },
+        {
+          "id": "other",
+          "label": "Box 14 - Other",
+          "type": "text",
+          "required": false
+        },
+        {
+          "id": "state_name_0",
+          "label": "Box 15 - State",
+          "type": "select",
+          "required": false,
+          "options": [
+            "(blank)",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "AA",
+            "AE",
+            "AP",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "DC",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VI",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+          ]
+        },
+        {
+          "id": "state_wages_0",
+          "label": "Box 16 - State wages, tips, etc.",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "state_tax_0",
+          "label": "Box 17 - State income tax",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "local_wages_0",
+          "label": "Box 18 - Local wages, tips, etc.",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "local_tax_0",
+          "label": "Box 19 - Local income tax",
+          "type": "number",
+          "required": false
+        },
+        {
+          "id": "locality_0",
+          "label": "Box 20 - Locality name",
+          "type": "text",
+          "required": false
+        },
+        {
+          "id": "temp_local_state_0",
+          "label": "State for Local Tax",
+          "type": "select",
+          "required": false,
+          "options": [
+            "(blank)",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "AA",
+            "AE",
+            "AP",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "DC",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VI",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+          ]
+        },
+        {
+          "id": "w2_type",
+          "label": "W-2 Type",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Standard W-2",
+            "Corrected W-2",
+            "Multiple employers with same EIN"
+          ]
+        },
+        {
+          "id": "is_corrected",
+          "label": "Is this a corrected W-2 from your employer? (not common)",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
+      ]
+    },
+    {
+      "page_title": "Tips or Overtime from Acme Corp",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 9,
+      "fields": [
+        {
+          "id": "is_tips_customarily_received",
+          "label": "Do you have any tip income from ACME CORP included in the wages shown in Box 1?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        },
+        {
+          "id": "is_overtime_received",
+          "label": "Were any of the wages on this W-2 for overtime?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
+      ]
+    },
+    {
+      "page_title": "Let's double-check your wages info (Acme Corp)",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 10,
       "fields": []
     }
   ],

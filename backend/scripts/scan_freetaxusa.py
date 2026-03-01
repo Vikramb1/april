@@ -391,6 +391,8 @@ After completing your scan, return a JSON object in this exact format:
 
 Add a "scanned_at" key with the value "{scanned_at}".
 Be thorough — record every field on every page, even optional ones.
+
+SKIP PAGES: If you encounter validation/review pages like "Let's double-check your wages info", upsell pages like "Deluxe gives you more", or anything about detecting something unusual — just click Continue at the bottom immediately. Do NOT spend time on these pages. Only record fields from actual data-entry pages.
 """
 
 
