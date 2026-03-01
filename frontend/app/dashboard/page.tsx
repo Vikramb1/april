@@ -263,11 +263,6 @@ export default function Dashboard() {
       <div className="fixed top-14 left-0 right-0 z-40 bg-amber-pale border-b border-amber px-4 py-2 text-center text-[12px] text-amber font-medium">
         Chatbot and browser agent are not running to conserve resources
       </div>
-      {backendDown && (
-        <div className="fixed top-16 right-3 z-50 bg-amber-pale border border-amber rounded-full px-3 py-1 text-[11px] text-amber font-medium shadow-sm pointer-events-none">
-          Backend offline
-        </div>
-      )}
       <div className="flex flex-1 overflow-hidden pt-[calc(3.5rem+2rem)]">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden bg-cream">
