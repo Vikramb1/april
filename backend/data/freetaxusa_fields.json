@@ -1,0 +1,84 @@
+{
+  "_note": "This is a starter placeholder. Run `python scripts/scan_freetaxusa.py` to populate with real fields from FreeTaxUSA.",
+  "sections": [
+    {
+      "name": "Personal Information",
+      "page_url_pattern": "/filing/personal-info",
+      "fields": [
+        {"id": "first_name", "label": "First Name", "type": "text", "required": true},
+        {"id": "last_name", "label": "Last Name", "type": "text", "required": true},
+        {"id": "ssn", "label": "Social Security Number", "type": "text", "required": true},
+        {"id": "dob", "label": "Date of Birth", "type": "date", "required": true},
+        {"id": "address", "label": "Street Address", "type": "text", "required": true},
+        {"id": "city", "label": "City", "type": "text", "required": true},
+        {"id": "state", "label": "State", "type": "select", "required": true},
+        {"id": "zip", "label": "ZIP Code", "type": "text", "required": true},
+        {"id": "occupation", "label": "Occupation", "type": "text", "required": false}
+      ]
+    },
+    {
+      "name": "Filing Status",
+      "page_url_pattern": "/filing/filing-status",
+      "fields": [
+        {"id": "filing_status", "label": "Filing Status", "type": "radio", "required": true}
+      ]
+    },
+    {
+      "name": "W-2 Income",
+      "page_url_pattern": "/filing/income/w2",
+      "fields": [
+        {"id": "employer_name", "label": "Employer Name", "type": "text", "required": true},
+        {"id": "ein", "label": "Employer EIN", "type": "text", "required": true},
+        {"id": "wages", "label": "Wages (Box 1)", "type": "number", "required": true},
+        {"id": "federal_withheld", "label": "Federal Income Tax Withheld (Box 2)", "type": "number", "required": true},
+        {"id": "ss_withheld", "label": "Social Security Tax Withheld (Box 4)", "type": "number", "required": false},
+        {"id": "medicare_withheld", "label": "Medicare Tax Withheld (Box 6)", "type": "number", "required": false},
+        {"id": "state_wages", "label": "State Wages (Box 16)", "type": "number", "required": false},
+        {"id": "state_withheld", "label": "State Income Tax Withheld (Box 17)", "type": "number", "required": false},
+        {"id": "box12_code", "label": "Box 12 Code", "type": "select", "required": false},
+        {"id": "box12_amount", "label": "Box 12 Amount", "type": "number", "required": false}
+      ]
+    },
+    {
+      "name": "1099 Income",
+      "page_url_pattern": "/filing/income/1099",
+      "fields": [
+        {"id": "form_type", "label": "1099 Form Type", "type": "select", "required": true},
+        {"id": "payer_name", "label": "Payer Name", "type": "text", "required": true},
+        {"id": "payer_tin", "label": "Payer TIN", "type": "text", "required": false},
+        {"id": "amount", "label": "Amount", "type": "number", "required": true},
+        {"id": "federal_withheld", "label": "Federal Tax Withheld", "type": "number", "required": false}
+      ]
+    },
+    {
+      "name": "Deductions",
+      "page_url_pattern": "/filing/deductions",
+      "fields": [
+        {"id": "type", "label": "Deduction Type", "type": "radio", "required": true},
+        {"id": "mortgage_interest", "label": "Mortgage Interest Paid", "type": "number", "required": false},
+        {"id": "charitable_cash", "label": "Cash Charitable Contributions", "type": "number", "required": false},
+        {"id": "student_loan_interest", "label": "Student Loan Interest", "type": "number", "required": false}
+      ]
+    },
+    {
+      "name": "Credits",
+      "page_url_pattern": "/filing/credits",
+      "fields": [
+        {"id": "child_tax_credit_count", "label": "Number of Qualifying Children (Child Tax Credit)", "type": "number", "required": false},
+        {"id": "education_credit_type", "label": "Education Credit Type", "type": "select", "required": false},
+        {"id": "eitc_qualifying_children", "label": "EITC Qualifying Children", "type": "number", "required": false}
+      ]
+    },
+    {
+      "name": "Bank / Refund",
+      "page_url_pattern": "/filing/bank-info",
+      "fields": [
+        {"id": "routing", "label": "Bank Routing Number", "type": "text", "required": true},
+        {"id": "account", "label": "Bank Account Number", "type": "text", "required": true},
+        {"id": "bank_account_type", "label": "Account Type", "type": "radio", "required": true}
+      ]
+    }
+  ],
+  "pdf_upload_sections": ["W-2 Income", "1099 Income"],
+  "scanned_at": null
+}
