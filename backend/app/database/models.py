@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON
+    Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, LargeBinary
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -93,6 +93,7 @@ class W2Form(Base):
     box12_code = Column(String, nullable=True)
     box12_amount = Column(Float, nullable=True)
     extra_data = Column(JSON, nullable=True)
+    pdf_data = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -110,6 +111,7 @@ class Form1099(Base):
     amount = Column(Float, nullable=True)
     federal_withheld = Column(Float, nullable=True)
     raw_json = Column(JSON, nullable=True)
+    pdf_data = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

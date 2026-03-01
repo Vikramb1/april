@@ -19,11 +19,13 @@ from app.schemas.api import (
     UserDataResponse,
     UpdateDataRequest,
     FetchGustoW2Request, FetchGustoW2Response,
+    FetchFidelity1099Request, FetchFidelity1099Response,
 )
 from app.services.chat_agent import run_chat_turn
 from app.services.pdf_parser import parse_tax_pdf
 from app.services.browser_agent import run_submission, run_section
 from app.services.gusto_agent import start_gusto_w2_task, get_gusto_w2_result
+from app.services.fidelity_agent import start_fidelity_1099_task, get_fidelity_1099_result
 from app.services.field_loader import get_all_required_fields
 
 
@@ -207,7 +209,7 @@ def _row_to_dict(obj):
     base = {
         c.name: getattr(obj, c.name)
         for c in obj.__table__.columns
-        if c.name not in ('extra_data', 'created_at', 'updated_at', 'user_id')
+        if c.name not in ('extra_data', 'pdf_data', 'created_at', 'updated_at', 'user_id')
     }
     extra = getattr(obj, 'extra_data', None) or {}
     return {**base, **extra}
@@ -275,9 +277,10 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
 
     w2 = W2Form(user_id=body.user_id)
     for k, v in fields.items():
-        if hasattr(w2, k) and k not in ("id", "user_id", "created_at", "updated_at", "extra_data"):
+        if hasattr(w2, k) and k not in ("id", "user_id", "created_at", "updated_at", "extra_data", "pdf_data"):
             setattr(w2, k, v)
     w2.extra_data = fields
+    w2.pdf_data = pdf_bytes
     db.add(w2)
     db.commit()
     db.refresh(w2)
@@ -287,6 +290,47 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
         extracted_fields=fields,
         saved=True,
         w2_id=w2.id,
+    )
+
+
+# ── POST /fetch-fidelity-1099 ──────────────────────────────────────────
+@app.post("/fetch-fidelity-1099", response_model=FetchFidelity1099Response)
+async def fetch_fidelity_1099(body: FetchFidelity1099Request, db: Session = Depends(get_db)):
+    """Fetch consolidated 1099 from Fidelity via browser automation.
+
+    Starts a browser-use cloud task that logs into Fidelity (if needed),
+    navigates to Tax Forms, and downloads the 1099 PDF.
+    If MFA is required, enter the code at the live_url logged to console.
+    """
+    user = db.query(User).filter_by(id=body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    task_info = await start_fidelity_1099_task()
+    import logging
+    logging.getLogger("uvicorn").info(
+        f"Fidelity live URL (enter MFA here if needed): {task_info['live_url']}"
+    )
+
+    try:
+        pdf_bytes = await get_fidelity_1099_result(task_info["task_id"])
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    f1099 = Form1099(
+        user_id=body.user_id,
+        form_type="1099",
+        pdf_data=pdf_bytes,
+    )
+    db.add(f1099)
+    db.commit()
+    db.refresh(f1099)
+
+    return FetchFidelity1099Response(
+        form_type="1099",
+        extracted_fields={},
+        saved=True,
+        form_1099_id=f1099.id,
     )
 
 

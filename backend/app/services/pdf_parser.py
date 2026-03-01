@@ -49,4 +49,11 @@ async def parse_tax_pdf(pdf_bytes: bytes) -> dict:
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1]  # remove ```json line
         raw = raw.rsplit("```", 1)[0]  # remove closing ```
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Try to fix common JSON issues (trailing commas, comments)
+        import re
+        cleaned = re.sub(r'//.*?$', '', raw, flags=re.MULTILINE)  # remove line comments
+        cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)  # remove trailing commas
+        return json.loads(cleaned)

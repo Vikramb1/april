@@ -102,3 +102,15 @@ class FetchGustoW2Response(BaseModel):
     extracted_fields: dict[str, Any]
     saved: bool
     w2_id: int
+
+
+# ── Fidelity 1099 Fetch ──────────────────────────────────────────────
+class FetchFidelity1099Request(BaseModel):
+    user_id: int
+
+
+class FetchFidelity1099Response(BaseModel):
+    form_type: str
+    extracted_fields: dict[str, Any]
+    saved: bool
+    form_1099_id: int

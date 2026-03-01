@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     gusto_profile_id: Optional[str] = None
     gusto_email: str = ""
     gusto_password: str = ""
+    fidelity_email: str = ""
+    fidelity_password: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
