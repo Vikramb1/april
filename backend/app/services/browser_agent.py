@@ -397,6 +397,16 @@ async def run_submission(db: Session, user_id: int, on_section_done=None) -> lis
             f"(llm={llm}, max_steps={max_steps})"
         )
 
+        # Notify frontend that this section is starting
+        if on_section_done:
+            on_section_done({
+                "type": "section_start",
+                "section": section,
+                "index": i,
+                "total": len(SECTION_CONFIGS),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+
         run_kwargs = dict(
             task=prompt,
             session_id=str(session.id),

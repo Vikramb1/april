@@ -246,14 +246,17 @@ async def filing_stream(user_id: int):
                     evt = events[cursor]
                     cursor += 1
                     yield f"data: {json.dumps(evt)}\n\n"
-                    if evt.get("type") in ("complete", "error", "timeout"):
+                    if evt.get("type") in ("complete", "error"):
                         return
                 waiter.clear()
                 try:
-                    await asyncio.wait_for(waiter.wait(), timeout=120)
+                    # Wait up to 30s, then send a keepalive comment to prevent
+                    # proxy/browser timeouts.  Repeat until a real event arrives
+                    # or 15 minutes total have elapsed.
+                    await asyncio.wait_for(waiter.wait(), timeout=30)
                 except asyncio.TimeoutError:
-                    yield f"data: {json.dumps({'type': 'timeout'})}\n\n"
-                    return
+                    # Send SSE comment as keepalive (not a data event)
+                    yield ": keepalive\n\n"
         finally:
             _filing_waiters.get(user_id, []).remove(waiter)
 
@@ -412,7 +415,7 @@ async def fetch_gusto_w2(body: FetchGustoW2Request, db: Session = Depends(get_db
     )
 
     try:
-        pdf_bytes = await get_gusto_w2_result(task_info["task_id"])
+        pdf_bytes = await get_gusto_w2_result(task_info["task_id"], task_info["session_id"])
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -479,7 +482,7 @@ async def fetch_fidelity_1099(body: FetchFidelity1099Request, db: Session = Depe
     )
 
     try:
-        pdf_bytes = await get_fidelity_1099_result(task_info["task_id"])
+        pdf_bytes = await get_fidelity_1099_result(task_info["task_id"], task_info["session_id"])
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
 

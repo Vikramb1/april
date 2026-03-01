@@ -264,12 +264,14 @@ export interface SectionResult {
 }
 
 export interface FilingEvent {
-  type: 'section_complete' | 'complete' | 'timeout' | 'error'
+  type: 'section_start' | 'section_complete' | 'complete' | 'timeout' | 'error'
   section?: string
   success?: boolean
   overall_success?: boolean
   timestamp?: string
   message?: string
+  index?: number
+  total?: number
 }
 
 export interface FilingLogEntry {

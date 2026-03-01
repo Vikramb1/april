@@ -27,18 +27,14 @@ function formatTime(iso: string | undefined) {
 
 export function FilingTimeline() {
   const filingProgress = useStore((s) => s.filingProgress)
+  const currentFilingSection = useStore((s) => s.currentFilingSection)
 
   const sections = FILING_SECTIONS.map((name) => {
     const result = filingProgress.find((r) => r.section_name === name)
-    const status = result ? 'complete' : 'pending'
+    const isActive = currentFilingSection === name && !result
+    const status = result ? 'complete' : isActive ? 'in_progress' : 'pending'
     return { name, status, timestamp: result?.timestamp, success: result?.success }
   })
-
-  // The first non-complete is in_progress
-  const firstPendingIdx = sections.findIndex((s) => s.status === 'pending')
-  if (firstPendingIdx >= 0 && filingProgress.length < FILING_SECTIONS.length) {
-    sections[firstPendingIdx] = { ...sections[firstPendingIdx], status: 'in_progress' }
-  }
 
   return (
     <div className="space-y-1">

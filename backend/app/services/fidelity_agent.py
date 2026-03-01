@@ -1,3 +1,4 @@
+import logging
 import httpx
 try:
     from browser_use_sdk import AsyncBrowserUse
@@ -5,6 +6,9 @@ except ImportError:
     AsyncBrowserUse = None  # type: ignore
 
 from app.config import settings
+from app.services.gusto_agent import _fetch_session_file
+
+logger = logging.getLogger("uvicorn")
 
 
 def _client() -> AsyncBrowserUse:
@@ -62,7 +66,7 @@ async def start_fidelity_1099_task() -> dict:
     }
 
 
-async def get_fidelity_1099_result(task_id: str) -> bytes:
+async def get_fidelity_1099_result(task_id: str, session_id: str) -> bytes:
     """Wait for the Fidelity 1099 task to complete and return PDF bytes.
 
     Raises RuntimeError if the task failed or no file was downloaded.
@@ -71,15 +75,21 @@ async def get_fidelity_1099_result(task_id: str) -> bytes:
 
     result = await client.tasks.wait(task_id, timeout=300)
 
-    if not result.output_files:
-        raise RuntimeError(
-            f"No 1099 PDF was downloaded. Agent output: {result.output}"
-        )
+    # Try output_files first (formal task output)
+    if result.output_files:
+        file_info = result.output_files[0]
+        file_output = await client.files.task_output(task_id, str(file_info.id))
+        async with httpx.AsyncClient() as http:
+            resp = await http.get(file_output.download_url)
+            resp.raise_for_status()
+            return resp.content
 
-    file_info = result.output_files[0]
-    file_output = await client.files.task_output(task_id, str(file_info.id))
+    # Fallback: check session workspace for downloaded files
+    logger.info(f"output_files empty, checking session {session_id} workspace...")
+    pdf_bytes = await _fetch_session_file(session_id)
+    if pdf_bytes:
+        return pdf_bytes
 
-    async with httpx.AsyncClient() as http:
-        resp = await http.get(file_output.download_url)
-        resp.raise_for_status()
-        return resp.content
+    raise RuntimeError(
+        f"No 1099 PDF was downloaded. Agent output: {result.output}"
+    )

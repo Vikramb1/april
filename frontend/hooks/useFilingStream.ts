@@ -21,7 +21,7 @@ export function useFilingStream(userId: number | null, enabled: boolean) {
       try {
         const event = JSON.parse(e.data)
         useStore.getState().addFilingEvent(event)
-        if (event.type === 'complete' || event.type === 'timeout' || event.type === 'error') {
+        if (event.type === 'complete' || event.type === 'error') {
           es.close()
           esRef.current = null
         }
@@ -30,12 +30,15 @@ export function useFilingStream(userId: number | null, enabled: boolean) {
       }
     }
 
-    // Don't close on error — EventSource auto-reconnects
-    // Only close if the connection is permanently dead
+    // Reset error count on successful message
     let errorCount = 0
+    es.addEventListener('message', () => { errorCount = 0 })
+
     es.onerror = () => {
       errorCount++
-      if (errorCount > 5) {
+      // EventSource auto-reconnects on transient errors.
+      // Only give up after many consecutive failures.
+      if (errorCount > 20) {
         es.close()
         esRef.current = null
       }
