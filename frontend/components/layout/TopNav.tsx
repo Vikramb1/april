@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { clsx } from 'clsx'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/store'
@@ -37,7 +38,7 @@ export function TopNav() {
   return (
     <header className="h-14 fixed top-0 left-0 right-0 bg-white border-b border-hairline z-50 flex items-center px-5 gap-4">
       {/* Logo */}
-      <div className="flex items-center flex-shrink-0">
+      <Link href="/" className="flex items-center flex-shrink-0">
         <Image
           src="/april-logo-no-bg.png"
           alt="April"
@@ -46,7 +47,7 @@ export function TopNav() {
           priority
           className="h-8 w-auto"
         />
-      </div>
+      </Link>
 
       {/* Year switcher */}
       <div className="flex items-center gap-2 ml-4">

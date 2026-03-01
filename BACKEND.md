@@ -37,7 +37,7 @@ SQLite (april.db)              ← all user data, chat history, and tax records
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app + all 11 routes
+│   ├── main.py                  # FastAPI app + all 13 routes
 │   ├── config.py                # Pydantic settings (loads from .env)
 │   ├── queues.py                # Shared asyncio Queues for SSE filing stream
 │   ├── database/
@@ -117,13 +117,13 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 - Supports individual section retry via `run_section()`
 - Returns per-section `{section_name, success, error}` results
 
-### 6. Gusto Agent (`app/services/gusto_agent.py`)
+### 7. Gusto Agent (`app/services/gusto_agent.py`)
 - Uses browser-use Cloud SDK (`browser-use-sdk`) — runs in a cloud-hosted browser, not local Chrome
 - `create_gusto_profile(name)` — creates a persistent browser profile, opens Gusto login for user to authenticate
 - `fetch_w2_pdf(profile_id)` — reuses an authenticated profile to navigate Gusto and download the most recent W-2 PDF
 - Downloaded PDF is passed through the existing `parse_tax_pdf()` pipeline and saved as a W2Form record
 
-### 7. FastAPI Routes (`app/main.py`)
+### 8. FastAPI Routes (`app/main.py`)
 
 | Method | Route | Description |
 |---|---|---|
@@ -141,7 +141,7 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 | POST | /gusto-login | Creates browser-use cloud profile for Gusto; user authenticates via live_url |
 | POST | /fetch-gusto-w2 | Uses saved profile to fetch W-2 from Gusto, parse, and save to DB |
 
-### 8. Schemas (`app/schemas/api.py`)
+### 9. Schemas (`app/schemas/api.py`)
 - `CreateUserRequest`, `UserResponse`
 - `CreateSessionRequest`, `SessionResponse`
 - `ChatRequest`, `ChatResponse`
@@ -153,7 +153,7 @@ All tables include `extra_data JSON` to store the full frontend payload verbatim
 - `UpdateDataRequest` — body for PUT /users/{id}/data
 - `GustoLoginRequest`, `GustoLoginResponse`, `FetchGustoW2Request`, `FetchGustoW2Response`
 
-### 9. SSE Queue (`app/queues.py`)
+### 10. SSE Queue (`app/queues.py`)
 - `filing_queues: dict[int, asyncio.Queue]` — one queue per active filing user
 - `browser_agent.py` pushes events; `main.py` /filing-stream reads them
 - Separated into its own module to avoid circular imports

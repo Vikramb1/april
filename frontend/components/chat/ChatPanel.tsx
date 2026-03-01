@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { ChatMessage } from './ChatMessage'
 import { PDFUploadCard } from './PDFUploadCard'
 import { ChatInput } from './ChatInput'
+import { CURRENT_TAX_YEAR } from '@/lib/dummyData'
 
 interface ChatPanelProps {
   backendDown?: boolean
@@ -28,6 +29,7 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     hydrateTaxData,
     phase,
     clearMessages,
+    activeYear,
   } = useStore(
     useShallow((s) => ({
       messages: s.messages,
@@ -44,8 +46,11 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       hydrateTaxData: s.hydrateTaxData,
       phase: s.phase,
       clearMessages: s.clearMessages,
+      activeYear: s.activeYear,
     }))
   )
+
+  const isPastYear = activeYear !== CURRENT_TAX_YEAR
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -113,10 +118,10 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
     }
   }
 
-  const inputDisabled = isTyping || phase === 'filing'
+  const inputDisabled = isTyping || phase === 'filing' || isPastYear
 
   return (
-    <aside className="w-[28%] bg-white border-l border-hairline flex flex-col">
+    <aside className="w-[28%] bg-white border-l border-hairline flex flex-col relative">
       {/* Header */}
       <div className="px-4 py-3 border-b border-hairline flex items-center gap-2 flex-shrink-0">
         <span className="text-base font-bold text-ink">April</span>
@@ -156,6 +161,18 @@ export function ChatPanel({ backendDown }: ChatPanelProps) {
       <div className="px-4 pb-4 pt-2 border-t border-hairline flex-shrink-0">
         <ChatInput onSend={handleSend} disabled={inputDisabled} />
       </div>
+
+      {/* Past-year overlay */}
+      {isPastYear && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-10">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <p className="text-[13px] font-semibold text-ink text-center px-6">Chat unavailable for past years</p>
+          <p className="text-[12px] text-muted text-center px-8 leading-relaxed">{activeYear} is already filed. Switch to {CURRENT_TAX_YEAR} to use the assistant.</p>
+        </div>
+      )}
     </aside>
   )
 }

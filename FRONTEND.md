@@ -45,7 +45,7 @@ frontend/
 │   │   ├── ProgressRing.tsx    # Animated SVG ring (120px, phase-aware)
 │   │   └── SectionPills.tsx    # Horizontal scrollable pills with state variants
 │   ├── chat/
-│   │   ├── ChatPanel.tsx       # Right panel wrapper; refreshes taxData from DB after each message
+│   │   ├── ChatPanel.tsx       # Right panel wrapper; refreshes taxData from DB after each message; "Clear chat" button appears when messages exist
 │   │   ├── ChatMessage.tsx     # April (green left border) vs user (right-aligned grey)
 │   │   ├── PDFUploadCard.tsx   # Inline green-bordered drag-and-drop upload card
 │   │   └── ChatInput.tsx       # Input bar (no suggestion chips)
@@ -65,7 +65,7 @@ frontend/
 │       └── TerminalLog.tsx         # Browser agent log (JetBrains Mono, live scroll)
 │
 ├── lib/
-│   ├── api.ts              # Typed fetch wrappers for all 11 backend endpoints
+│   ├── api.ts              # Typed fetch wrappers for all 13 backend endpoints
 │   └── types.ts            # Shared TypeScript types
 │
 ├── hooks/
@@ -137,14 +137,18 @@ missingFields: string[]
 // Filing
 filingProgress: SectionResult[]
 filingLog: FilingLogEntry[]
+
+// Transient (not persisted)
+saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 ```
 
 ### Key Actions
 
 | Action | Behavior |
 |---|---|
-| `setTaxData(data)` | Updates local state **and** fires `PUT /users/{id}/data` to backend (fire-and-forget) |
+| `setTaxData(data)` | Updates local state + sets `saveStatus: 'saving'`; fires `PUT /users/{id}/data`; sets `'saved'` on success or `'error'` on failure (resets to `'idle'` after 2–3 s) |
 | `hydrateTaxData(data)` | Updates local state only — used on init and after chat to avoid write-back loops |
+| `clearMessages()` | Empties the `messages` array (exposed as "Clear chat" button in ChatPanel) |
 | `resetTaxData()` | Clears taxData, percentComplete, missingFields, phase, filingProgress/Log |
 | `logout()` | Clears all persisted state including userId/sessionId |
 
@@ -175,7 +179,7 @@ All requests go to `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 Every user edit in any section component calls `setTaxData(newData)` which:
 1. Updates Zustand store immediately (UI reflects change)
 2. Persists to localStorage (Zustand persist middleware)
-3. Fires `PUT /users/{id}/data` to the backend DB (fire-and-forget; failures are silent)
+3. Sets `saveStatus: 'saving'` and fires `PUT /users/{id}/data`; shows `Saving…` → `✓ Saved` / `Save failed` overlay in the collecting-phase panel (top-right corner)
 
 On page load (dashboard `useEffect`):
 1. Restore from localStorage (automatic via Zustand persist)
@@ -187,10 +191,12 @@ After each chat message: same GET + hydrate to reflect chat-agent extractions in
 
 ## Section UI Patterns
 
-### FieldRow (PersonalSection)
-- Click to enter edit mode → `<input>` with `autoFocus`
+### FieldRow (PersonalSection, DeductionsSection, BankSection, CreditsSection, profile/page)
+- Always renders an `<input>` — never swaps element type (prevents layout shift)
+- `readOnly` when not editing; clicking sets focus → border turns green, cursor changes
 - On blur: saves value to store via `onChange(localVal)` → triggers `setTaxData`
-- Empty fields show muted placeholder text (e.g. "John", "XXX-XX-XXXX")
+- Empty fields show muted placeholder text (e.g. `"John"`, `"e.g. 021000021"`)
+- DeductionsSection shows formatted `$` value when not editing; raw number when editing
 
 ### SelectRow
 - Native `<select>` for state (all 57 options) and suffix
@@ -216,7 +222,7 @@ After each chat message: same GET + hydrate to reflect chat-agent extractions in
 | ✓ green | `percentComplete > 0` and no missing fields for section | Green ✓ icon + `bg-green-pale` row |
 | Active | Currently selected section | `bg-green text-white` |
 
-"Reset info" button at sidebar bottom: shows inline confirmation → calls `DELETE /users/{id}/data` + `resetTaxData()`.
+"Reset info" button at sidebar bottom: shows inline **red** confirmation dialog (`bg-red-50 border-red`) → calls `DELETE /users/{id}/data` + `resetTaxData()`.
 
 ---
 
