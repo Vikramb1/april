@@ -32,33 +32,37 @@ frontend/
 ├── app/
 │   ├── layout.tsx              # Fonts (Plus Jakarta Sans + JetBrains Mono) + metadata
 │   ├── globals.css             # Design tokens, animations, scrollbar-hide utility
-│   ├── page.tsx                # Redirects → /dashboard
+│   ├── page.tsx                # Landing page (Nav, Hero, WorksSection, TheGap, Stats, Security, FAQ, Footer)
 │   ├── dashboard/page.tsx      # Three-column layout; init + DB hydration; resizable chat
-│   ├── profile/page.tsx        # Apple-settings style profile page
-│   └── accounts/page.tsx       # Connected financial accounts grid
+│   └── _landing/               # Landing page components (inline styles, not Tailwind)
+│       ├── shared.tsx          # useScrollY, useWindowWidth, useInView, enter(), OrganicBlob, SectionLabel, StatusDot
+│       ├── Nav.tsx             # Fixed nav; transparent at top, frosted on scroll
+│       ├── Hero.tsx            # Headline + scroll-driven dashboard mockup reveal
+│       ├── WorksSection.tsx    # 7-step scroll-driven sticky mockup section
+│       ├── Content.tsx         # TheGap (comparison table) + Stats (animated count-up)
+│       └── Closing.tsx         # Security (6 cards) + FAQ (accordion) + FinalCTA + Footer
 │
 ├── components/
 │   ├── layout/
 │   │   ├── TopNav.tsx          # Fixed 56px bar: logo · year pills · phase pill · avatar
-│   │   └── Sidebar.tsx         # Progress ring · click accordion nav · reset button
+│   │   └── Sidebar.tsx         # Progress ring · refund estimate card · click accordion nav
 │   ├── ui/
-│   │   ├── ProgressRing.tsx    # Animated SVG ring (120px, phase-aware)
-│   │   └── SectionPills.tsx    # Horizontal scrollable pills with state variants
+│   │   └── ProgressRing.tsx    # Animated SVG ring (phase-aware)
 │   ├── chat/
-│   │   ├── ChatPanel.tsx       # Resizable right panel; "Clear chat" button when messages exist
+│   │   ├── ChatPanel.tsx       # Drag-resizable right panel; backend-down indicator
 │   │   ├── ChatMessage.tsx     # April (green left border) vs user (right-aligned grey)
-│   │   ├── PDFUploadCard.tsx   # Inline green-bordered drag-and-drop upload card
-│   │   └── ChatInput.tsx       # Input bar
+│   │   ├── PDFUploadCard.tsx   # Inline drag-and-drop upload card
+│   │   └── ChatInput.tsx       # Input bar + PDF upload button
 │   ├── sections/
-│   │   ├── SectionContent.tsx          # switch(activeSection) dispatcher — all 18 keys + legacy
+│   │   ├── SectionContent.tsx          # switch(activeSection) dispatcher — all 18 keys
 │   │   ├── PersonalSection.tsx         # 23 FreeTaxUSA fields; yes/no deselect on all radio rows
 │   │   ├── FilingStatusSection.tsx     # 5 radio-card statuses; spouse fields appear for MFJ
 │   │   ├── DependentsSection.tsx       # "Do you have dependents?" gate → per-dependent accordion
 │   │   ├── IdentityProtectionSection.tsx # Yes/No gate; 6-digit PIN input when Yes
 │   │   ├── W2Section.tsx               # All 44 W-2 boxes in 7 groups; compact card summary
-│   │   ├── Form1099Section.tsx         # Per-payer cards; NEC/INT/DIV/B/MISC/R/SSA types
-│   │   ├── OtherIncomeSection.tsx      # Cryptocurrency, investments, unemployment, SS, retirement, business/rental
-│   │   ├── DeductionsSection.tsx       # 7 CategoryCard toggles; live standard vs itemized comparison
+│   │   ├── Form1099Section.tsx         # has_1099_income gate → per-payer cards; NEC/INT/DIV/B/MISC/R/SSA types
+│   │   ├── OtherIncomeSection.tsx      # has_cryptocurrency gate; investments, unemployment, SS, retirement
+│   │   ├── DeductionsSection.tsx       # has_itemized_deductions gate → 7 CategoryCard toggles; live comparison
 │   │   ├── HealthInsuranceSection.tsx  # Marketplace insurance yes/no; 1095-A note
 │   │   ├── CommonCreditsSection.tsx    # IRA, college tuition, student loan, teacher, EIC, car loan, home energy, child care
 │   │   ├── OtherCreditsSection.tsx     # HSA, MSA, adoption, elderly, clean vehicle, alt fuel, MCC, and more
@@ -68,21 +72,23 @@ frontend/
 │   │   ├── StateResidencySection.tsx   # State dropdown; residency/full-year/other-state-income questions
 │   │   ├── StateReturnSection.tsx      # State filing summary based on residency answers
 │   │   ├── BankSection.tsx             # Refund type picker (direct deposit/GO2bank/paper check); DD fields
-│   │   └── ReviewSection.tsx           # Return summary; submit guard; "File My Return →" button
+│   │   └── ReviewSection.tsx           # Return summary; validation modal; filing action buttons
 │   └── filing/
 │       ├── FilingView.tsx              # Phase 3 container (wraps timeline + terminal)
 │       ├── FilingTimeline.tsx          # Vertical section timeline with status icons
 │       └── TerminalLog.tsx             # Browser agent log (JetBrains Mono, live scroll)
 │
 ├── lib/
-│   ├── api.ts              # Typed fetch wrappers for all backend endpoints
-│   └── types.ts            # Shared TypeScript types + SECTION_GROUPS constant
+│   ├── api.ts              # Typed fetch wrappers for all 14 backend endpoints
+│   ├── types.ts            # Shared TypeScript types + SECTION_GROUPS constant
+│   ├── sectionUtils.ts     # isSectionComplete(), isSectionStarted(), OPTIONAL_SECTIONS
+│   └── validation.ts       # getMissingFields() — returns { section, label }[] for modal
 │
 ├── hooks/
 │   └── useFilingStream.ts  # EventSource hook consuming /filing-stream/{user_id} SSE
 │
 └── store/
-    └── index.ts            # Zustand store
+    └── index.ts            # Zustand store (persisted)
 ```
 
 ---
@@ -123,16 +129,16 @@ All 44 W-2 boxes: employer info (name, EIN, address, city, state, zip, address_t
 `first_name`, `last_name`, `ssn`, `date_of_birth`, `relationship`, `months_lived`
 
 ### `Deductions`
-Category flags: `has_homeowner`, `has_donations`, `has_medical`, `has_taxes_paid`, `has_investment_interest`, `has_casualty`, `has_other_itemized`. Amount fields for each category. Standard/itemized comparison helpers.
+Gate: `has_itemized_deductions` (`'Yes'|'No'`). Category flags: `has_homeowner`, `has_donations`, `has_medical`, `has_taxes_paid`, `has_investment_interest`, `has_casualty`, `has_other_itemized`. Amount fields for each category. Standard/itemized comparison helpers.
 
 ### `Credits`
 `has_marketplace_insurance` (string), `has_ira`/`ira_amount`/`ira_type`, `has_college_tuition`, `has_student_loan`, `has_teacher_expenses`, `has_eic`/`eic_qualifying_children`, `has_car_loan`, `has_home_energy`, `has_child_care`, `has_hsa`, `has_clean_vehicle`, and ~10 more other-credits flags.
 
 ### `OtherIncome`
-`has_cryptocurrency` (string), `has_investments`/`investment_income`, `has_unemployment`/`unemployment_amount`, `has_social_security`/`social_security_amount`, `has_retirement_income`/`retirement_income`, `has_state_refund`, `has_capital_loss_carryover`, `has_business_rental`/`business_income`/`rental_income`
+Gates: `has_1099_income` (`'Yes'|'No'`), `has_cryptocurrency` (`'Yes'|'No'`). Plus: `has_investments`/`investment_income`, `has_unemployment`/`unemployment_amount`, `has_social_security`/`social_security_amount`, `has_retirement_income`/`retirement_income`, `has_state_refund`, `has_capital_loss_carryover`, `has_business_rental`/`business_income`/`rental_income`
 
 ### `MiscInfo`
-`has_estimated_payments`, `estimated_q1`–`q4`, `extension_payment`, `apply_refund_next_year`/`next_year_amount`, `has_foreign_accounts` (boolean|undefined), `has_foreign_assets` (boolean|undefined), `refund_maximizer` (`'maximize'|'skip'`), `has_dependents` (string `'Yes'|'No'` — gate answer stored here)
+`has_estimated_payments`, `estimated_q1`–`q4`, `extension_payment`, `apply_refund_next_year`/`next_year_amount`, `has_foreign_accounts`, `has_foreign_assets`, `refund_maximizer` (`'maximize'|'skip'`), `has_dependents` (`'Yes'|'No'` — gate answer stored here)
 
 ### `StateInfo`
 `is_state_resident`, `is_full_year_resident`, `has_other_state_income` (all `'Yes'|'No'` strings)
@@ -193,7 +199,7 @@ missingFields: string[]
 filingProgress: SectionResult[]
 filingLog: FilingLogEntry[]
 
-// Transient (not persisted)
+// Transient
 saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 ```
 
@@ -212,17 +218,24 @@ saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 
 ## Sidebar (`components/layout/Sidebar.tsx`)
 
-### Completion Logic (frontend-driven — no backend required)
-
-Two functions drive all status indicators:
+### Completion Logic (`lib/sectionUtils.ts`)
 
 **`isSectionComplete(key, taxData, visited)`**
-- Optional sections (`dependents`, `common-credits`, `other-credits`, `misc-forms`, `federal-summary`): complete when `visited === true`
-- Required sections: check specific `taxData` fields (e.g. all personal fields present, at least one W-2 with `employer_name` + `wages`, 1099 forms all have `payer_name`, etc.)
+- **Optional sections** (`dependents`, `common-credits`, `other-credits`, `misc-forms`, `federal-summary`): complete when `visited === true`
+- `personal-info`: all 7 required fields filled (first_name, last_name, ssn, address, city, state, zip_code)
+- `filing-status`: `filing_status` set
+- `identity-protection`: `identity_protection_pin` answered
+- `w2-income`: ≥1 W-2 with `employer_name` + `wages`
+- `1099-income`: `has_1099_income === 'No'` OR (`=== 'Yes'` AND ≥1 form with payer_name)
+- `other-income`: `has_cryptocurrency` answered
+- `deductions`: `has_itemized_deductions === 'No'` OR (`=== 'Yes'` AND ≥1 category flag toggled)
+- `health-insurance`: `has_marketplace_insurance` answered
+- `refund-maximizer`: `refund_maximizer` set
+- `state-residency`: state selected + `is_state_resident` answered
+- `bank-refund`: `refund_type` selected
+- `review`: complete when visited
 
-**`isSectionStarted(key, taxData)`**
-- Returns `true` only when partial data exists but section is not complete
-- Currently meaningful only for `personal-info` (some but not all of first_name/last_name/ssn/address/city/state/zip filled)
+**`isSectionStarted(key, taxData)`** — returns `true` when a gate question is answered Yes but the follow-up is incomplete. Used to show amber (in-progress) color instead of normal muted.
 
 ### Subsection Status
 
@@ -230,67 +243,79 @@ Two functions drive all status indicators:
 |---|---|---|
 | Active | `activeSection === key` | `bg-green text-white` |
 | Complete | `isSectionComplete` | `bg-green-pale text-green` + ✓ badge |
-| Started | `isSectionStarted` (partial data) | `bg-amber-pale text-amber` + ⚠ badge |
-| Default | Not visited or visited but empty | Plain `text-ink` |
+| Started | `isSectionStarted` | `bg-amber-pale text-amber` + ⚠ badge |
+| Default | Not visited or empty | Plain `text-ink` |
 
 ### Group Header Status
 
 | State | Condition | Visual |
 |---|---|---|
 | Complete | All subsections complete | `text-green-mid` + ✓ |
-| In progress | Some subsections complete or started (not all) | `text-amber` + ⚠ |
+| In progress | Some complete or started | `text-amber` + ⚠ |
 | Default | No progress | `text-muted` |
+
+### Refund Estimate Card
+- Computed live using 2025 tax brackets (single + MFJ) from W-2 wages and withholding in `taxData`
+- No backend call — pure client-side calculation
+- Shows green card for refund (`Est. Refund $X`) or amber for owed (`Est. Owed $X`)
+- Hidden until wage or withholding data exists
+
+### Progress Ring
+Derived entirely from `isSectionComplete` calls across all 18 subsections. No backend dependency.
 
 ### Interaction Model
 - Click-based accordion: clicking a group header opens it and navigates to its first subsection
 - `effectiveOpenGroup = isPastYear ? null : openGroup` — collapses sidebar for past tax years
-- **Reset**: calls `DELETE /users/{id}/data` + `resetTaxData()` + resets `openGroup` to first group
-
-### Progress Ring
-`completedCount / allSubKeys.length × 100` — derived entirely from `isSectionComplete` calls, no backend dependency.
+- **Reset**: calls `DELETE /users/{id}/data` + `resetTaxData()` + resets `openGroup`
 
 ---
 
 ## Dashboard Layout (`app/dashboard/page.tsx`)
 
-Three-column layout:
 ```
 [Sidebar w-1/5] [Main flex-1] [DragHandle w-0] [ChatPanel 360–600px]
 ```
 
+All within a `flex flex-col h-screen` container with a fixed `TopNav` (56px).
+
 ### Resizable Chat Panel
 - Drag handle: `w-0` absolute-positioned widget centered on the `border-l` of ChatPanel
-- Visual: white pill container (`bg-white border border-hairline shadow-sm`) with 3 thin vertical lines (1px × 24px, `gap-[2px]`)
-- Lines turn green on hover; container border turns green-tinted
-- Width range: **360px** (min/default) to **600px** (max) — can only expand left, not shrink
+- Visual: white pill (`bg-white border-hairline shadow-sm`) with 3 vertical 1px×24px lines (`gap-[2px]`)
+- Lines turn green on hover; border turns green-tinted
+- Width range: **280px** (min) to **600px** (max); default **360px**
 - Mouse events attached to `window` on drag start, cleaned up on `mouseup`
 
+### Phase Logic
+
+| Phase | Middle panel behavior |
+|---|---|
+| `collecting` | Normal section editing; `SectionContent` renders the active section |
+| `reviewing` | Green "All information collected" banner in `ReviewSection` |
+| `filing` | Panel dims + locked; `FilingView` with live SSE progress |
+| `filed` | Green "✓ Filed" pill overlay; `ReviewSection` shows frozen state |
+
 ### Backend Offline Indicator
-When backend is unreachable: small amber pill (`Backend offline`) fixed at `top-16 right-3`, `pointer-events-none`. No full-width banner.
+Amber pill (`Backend offline`) fixed at `top-16 right-3` when init fails. `pointer-events-none`.
 
 ### Save Status
-Collecting phase shows `Saving…` / `✓ Saved` / `Save failed` in the top-right corner of the middle panel (absolute positioned, pointer-events-none).
+`Saving…` / `✓ Saved` / `Save failed` in the top-right corner of the middle panel (absolute, pointer-events-none).
 
 ---
 
-## Note Box Convention
+## Validation (`lib/validation.ts`)
 
-All informational/advisory boxes in section components use amber styling:
-- Container: `bg-amber-pale border border-amber rounded-xl`
-- Label: `text-amber font-semibold`
-- Body: `text-ink leading-relaxed`
-
-Green boxes are used only for confirmed-positive states (e.g. "No state income tax", "Form 1095-A required").
+`getMissingFields(taxData)` returns `{ section: string; label: string }[]` for all incomplete required fields. Used in `ReviewSection` to show a blocking modal when the user tries to file with missing data.
 
 ---
 
-## Yes/No Toggle Pattern
+## Key UX Conventions
 
-All Yes/No pill pairs use deselect-on-click:
-- `string` fields (`'Yes'|'No'`): clicking the active option sets value to `''`
-- `boolean|undefined` fields: clicking the active option sets value to `undefined`
-
-This ensures neither pill is highlighted when the user clears their answer.
+- **Yes/No pills deselect on re-click**: string fields reset to `''`; boolean fields to `undefined`
+- **Info boxes**: `bg-amber-pale border-amber` (not cream/hairline). Green boxes only for confirmed-positive states.
+- **Gate questions** (1099 income, deductions, dependents, identity protection, health insurance, other income): stored as string `'Yes'|'No'`; deselecting reverts section to incomplete (not amber)
+- **Red `*` on required fields**: `<span className="text-red-500 ml-0.5">*</span>`
+- **DependentsSection gate**: stored in `misc_info.has_dependents`
+- **StateResidency**: selecting a state resets `state_info` entirely
 
 ---
 
@@ -298,18 +323,48 @@ This ensures neither pill is highlighted when the user clears their answer.
 
 ### Gate Questions
 Sections with optional content show a Yes/No gate first:
-- **DependentsSection**: "Do you have any dependents?" — answer stored in `misc_info.has_dependents`; No → amber note; Yes → accordion form
-- **IdentityProtectionSection**: "Do you have an IRS Identity Protection PIN?" — Yes reveals 6-digit input
-- **HealthInsuranceSection**: "Did you have Marketplace insurance?" — Yes shows 1095-A note
+- **1099-income**: `other_income.has_1099_income` — No → section complete; Yes → must add ≥1 payer
+- **other-income**: `other_income.has_cryptocurrency` — gate for the main question
+- **deductions**: `deductions.has_itemized_deductions` — No → standard deduction banner; Yes → category cards
+- **dependents**: `misc_info.has_dependents` — No → amber note; Yes → accordion form
+- **identity-protection**: gate → 6-digit PIN input
+- **health-insurance**: gate → 1095-A note
 
 ### CategoryCard (DeductionsSection)
 7 toggle cards (homeowner, donations, medical, SALT, investment interest, casualty, other). Live comparison shows standard deduction vs itemized total; SALT cap displayed when exceeded.
 
 ### FederalSummarySection
-Full 2025 tax bracket calculation (single + MFJ tables) from live `taxData`. Aggregates W-2 wages + other income types, above-the-line adjustments, standard vs itemized, tax credits, withholding + estimated payments → refund/owed banner.
+Full 2025 tax bracket calculation (single + MFJ tables) from live `taxData`. Aggregates W-2 wages + other income types, applies standard vs itemized deduction, computes tax, subtracts credits and withholding → refund/owed banner.
 
 ### StateResidencySection
-Full 50-state + DC dropdown. Selecting a state resets `state_info`. `NO_INCOME_TAX` set (AK, FL, NV, NH, SD, TN, TX, WY, WA) shows green "no return needed" banner. Income-tax states reveal residency question chain.
+Full 50-state + DC dropdown. Selecting a state resets `state_info`. `NO_INCOME_TAX` set (AK, FL, NV, NH, SD, TN, TX, WY, WA) shows green "no return needed" banner.
+
+### ReviewSection
+- Summary table of all key return figures
+- `getMissingFields()` check before filing → modal listing all missing items
+- Filing options: File with FreeTaxUSA (browser agent), Download PDF for CPA (`GET /users/{id}/tax-pdf`), File with TurboTax (disabled), Do It Yourself (disabled)
+
+---
+
+## Landing Page (`app/page.tsx` + `app/_landing/`)
+
+All landing components use inline styles (not Tailwind). Shared utilities in `_landing/shared.tsx`:
+- `useScrollY()`, `useWindowWidth()` — scroll and viewport hooks
+- `useInView(threshold)` — IntersectionObserver for enter animations (fires once)
+- `enter(inView, delay, dx, dy)` — returns `opacity` + `transform` CSSProperties for fade-up/slide
+- `OrganicBlob` — animated background shape
+- `SectionLabel`, `StatusDot` — shared visual components
+
+**Page order:**
+1. `Nav` — transparent at top, frosted (`backdrop-filter: blur(12px)`) on scroll
+2. `Hero` — headline + scroll-driven dashboard mockup with fade+scale reveal
+3. `WorksSection` — 7 labeled steps (Hunt/Detect/Remember/Read/Verify/File/Control) with IntersectionObserver-driven sticky mockup transitions
+4. `TheGap` — comparison table showing April vs TurboTax/H&R Block/TaxAct + blockquote
+5. `Stats` — animated count-up: ~10 min, 99.2% accuracy, $2,840 avg refund
+6. `Security` — 6 cards: local machine, CDP localhost, SQLite storage, action logging, session closure, no data sold
+7. `FAQ` — accordion (8 questions)
+8. `FinalCTA` — dark green section with animated headline
+9. `Footer`
 
 ---
 
@@ -323,13 +378,16 @@ All requests go to `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 | POST | /sessions | Dashboard init |
 | POST | /chat | ChatPanel |
 | POST | /upload-pdf | PDFUploadCard |
+| POST | /upload-w2-pdf | W2Section (manual PDF upload) |
+| POST | /upload-1099-pdf | Form1099Section (manual PDF upload) |
 | GET | /sessions/{id}/status | Dashboard init + ChatPanel after each turn |
 | POST | /submit-taxes | ReviewSection |
 | POST | /retry-section | FilingTimeline (retry button) |
 | GET | /users/{id}/data | Dashboard init + ChatPanel after each turn |
 | PUT | /users/{id}/data | setTaxData (auto, fire-and-forget) |
-| DELETE | /users/{id}/data | Sidebar "Reset info" button |
-| GET | /filing-stream/{id} | useFilingStream hook (SSE) |
+| DELETE | /users/{id}/data | Sidebar reset button |
+| POST | /fetch-gusto-w2 | W2Section (Gusto integration) |
+| POST | /fetch-fidelity-1099 | Form1099Section (Fidelity integration) |
 
 ---
 
@@ -338,9 +396,9 @@ All requests go to `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
 Every user edit in any section component calls `setTaxData(newData)` which:
 1. Updates Zustand store immediately (UI reflects change)
 2. Persists to localStorage (Zustand persist middleware)
-3. Sets `saveStatus: 'saving'` and fires `PUT /users/{id}/data`; shows `Saving…` → `✓ Saved` / `Save failed` overlay
+3. Sets `saveStatus: 'saving'` and fires `PUT /users/{id}/data`; shows `Saving…` → `✓ Saved` / `Save failed`
 
-On page load (dashboard `useEffect`):
+On page load:
 1. Restore from localStorage (automatic via Zustand persist)
 2. Call `GET /users/{id}/data` → `hydrateTaxData(dbData)` — overwrites with DB truth if any data exists
 
@@ -350,21 +408,10 @@ After each chat message: same GET + hydrate to reflect chat-agent extractions in
 
 ## Phase Flow
 
-1. **collecting** — ChatPanel drives data collection; middle panel shows editable section fields via `SectionContent`
-2. **reviewing** — All fields collected; middle panel shows `ReviewSection` with submit guard
-3. **filing** — POST /submit-taxes triggered; `FilingView` with live SSE timeline + terminal log
-4. **filed** — All sections complete; timeline all green, past-year chat overlay shown if year changes
-
----
-
-## Page Routes
-
-| Route | Description |
-|---|---|
-| `/` | Redirects to `/dashboard` |
-| `/dashboard` | Main three-column filing experience |
-| `/profile` | Editable personal info + filing preferences + security |
-| `/accounts` | 3-col grid of connected financial institutions |
+1. **collecting** — ChatPanel drives data collection; middle panel shows editable section fields
+2. **reviewing** — All fields collected; ReviewSection with submit guard
+3. **filing** — POST /submit-taxes triggered; FilingView with live SSE timeline + terminal log
+4. **filed** — All sections complete; past-year selector available in TopNav
 
 ---
 
