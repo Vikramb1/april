@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { clsx } from 'clsx'
 import { useStore } from '@/store'
 import type { Dependent, TaxData } from '@/lib/types'
 
@@ -135,7 +136,16 @@ export function DependentsSection() {
   const taxData = useStore((s) => s.taxData)
   const setTaxData = useStore((s) => s.setTaxData)
 
+  const misc = taxData?.misc_info ?? {}
+  const hasDependents = misc.has_dependents ?? ''
   const dependents: Dependent[] = (taxData?.dependents as Dependent[]) ?? []
+
+  function setGate(val: string) {
+    setTaxData({
+      ...taxData,
+      misc_info: { ...misc, has_dependents: hasDependents === val ? '' : val },
+    } as TaxData)
+  }
 
   function update(deps: Dependent[]) {
     setTaxData({ ...taxData, dependents: deps } as TaxData)
@@ -148,27 +158,67 @@ export function DependentsSection() {
         Add qualifying children or other relatives you can claim as dependents on your 2025 return.
       </p>
 
-      {dependents.length === 0 ? (
-        <div className="text-center py-10 border border-dashed border-hairline rounded-xl text-muted text-[13px]">
-          No dependents added
+      {/* Gate question */}
+      <div className="border border-hairline rounded-xl p-4 mb-4">
+        <p className="text-[14px] font-semibold text-ink mb-1">
+          Do you have any dependents to claim on your 2025 return?
+        </p>
+        <p className="text-[12px] text-muted mb-4 leading-relaxed">
+          Dependents include qualifying children (under 19, or under 24 if a full-time student)
+          and other qualifying relatives you financially support.
+        </p>
+        <div className="flex gap-2">
+          {(['Yes', 'No'] as const).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setGate(opt)}
+              className={clsx(
+                'rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors border cursor-pointer',
+                hasDependents === opt
+                  ? 'bg-green text-white border-green'
+                  : 'border-hairline text-muted hover:border-green hover:text-ink',
+              )}
+            >
+              {opt}
+            </button>
+          ))}
         </div>
-      ) : (
-        dependents.map((dep, i) => (
-          <DepRow
-            key={i}
-            dep={dep}
-            onChange={(d) => update(dependents.map((x, j) => (j === i ? d : x)))}
-            onRemove={() => update(dependents.filter((_, j) => j !== i))}
-          />
-        ))
+      </div>
+
+      {hasDependents === 'No' && (
+        <div className="p-4 bg-amber-pale border border-amber rounded-xl">
+          <p className="text-[13px] font-semibold text-amber mb-1">No dependents on your return</p>
+          <p className="text-[12px] text-ink leading-relaxed">
+            You will not claim any dependents. If your situation changes, you can update this answer.
+          </p>
+        </div>
       )}
 
-      <button
-        onClick={() => update([...dependents, { ...EMPTY_DEP }])}
-        className="mt-4 text-green text-[14px] font-semibold cursor-pointer hover:text-green-mid transition-colors"
-      >
-        + Add Dependent
-      </button>
+      {hasDependents === 'Yes' && (
+        <>
+          {dependents.length === 0 ? (
+            <div className="text-center py-10 border border-dashed border-hairline rounded-xl text-muted text-[13px]">
+              No dependents added yet
+            </div>
+          ) : (
+            dependents.map((dep, i) => (
+              <DepRow
+                key={i}
+                dep={dep}
+                onChange={(d) => update(dependents.map((x, j) => (j === i ? d : x)))}
+                onRemove={() => update(dependents.filter((_, j) => j !== i))}
+              />
+            ))
+          )}
+
+          <button
+            onClick={() => update([...dependents, { ...EMPTY_DEP }])}
+            className="mt-4 text-green text-[14px] font-semibold cursor-pointer hover:text-green-mid transition-colors"
+          >
+            + Add Dependent
+          </button>
+        </>
+      )}
     </div>
   )
 }

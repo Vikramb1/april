@@ -283,10 +283,12 @@ export function FederalSummarySection() {
         </div>
       </div>
 
-      <p className="text-[11px] text-muted mt-3 leading-relaxed">
-        * This estimate uses simplified 2025 tax bracket rates. Actual tax may vary based on
-        additional factors not captured here.
-      </p>
+      <div className="p-3 bg-amber-pale border border-amber rounded-xl mt-3">
+        <p className="text-[11px] text-amber leading-relaxed">
+          * This estimate uses simplified 2025 tax bracket rates. Actual tax may vary based on
+          additional factors not captured here.
+        </p>
+      </div>
     </div>
   )
 }

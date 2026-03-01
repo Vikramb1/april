@@ -86,7 +86,7 @@ function RadioRow({ label, value, onChange }: RadioRowProps) {
         {['Yes', 'No'].map((opt) => (
           <button
             key={opt}
-            onClick={() => onChange(opt)}
+            onClick={() => onChange(value === opt ? '' : opt)}
             className={`px-3 py-1 text-[12px] font-medium rounded-full border transition-colors cursor-pointer ${
               value === opt
                 ? 'bg-green text-white border-green'

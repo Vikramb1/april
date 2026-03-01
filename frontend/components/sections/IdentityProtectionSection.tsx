@@ -45,7 +45,7 @@ export function IdentityProtectionSection() {
           {['Yes', 'No'].map((opt) => (
             <button
               key={opt}
-              onClick={() => handleHasPin(opt)}
+              onClick={() => handleHasPin(hasPin === opt ? '' : opt)}
               className={clsx(
                 'rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors border cursor-pointer',
                 hasPin === opt

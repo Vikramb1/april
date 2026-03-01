@@ -103,7 +103,7 @@ export function OtherIncomeSection() {
             {(['Yes', 'No'] as const).map((opt) => (
               <button
                 key={opt}
-                onClick={() => update({ has_cryptocurrency: opt })}
+                onClick={() => update({ has_cryptocurrency: oi.has_cryptocurrency === opt ? undefined : opt })}
                 className={clsx(
                   'px-3 py-1 text-[12px] font-medium rounded-full border transition-colors cursor-pointer',
                   oi.has_cryptocurrency === opt

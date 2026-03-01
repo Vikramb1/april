@@ -13,6 +13,7 @@ interface AppState {
   // Navigation
   activeSection: string
   activeYear: string
+  visitedSections: string[]
 
   // Chat
   messages: ChatMessage[]
@@ -59,6 +60,7 @@ export const useStore = create<AppState>()(
 
       activeSection: 'personal-info',
       activeYear: '2025',
+      visitedSections: ['personal-info'],
 
       messages: [],
       pendingPdfUpload: { active: false, reason: '' },
@@ -76,7 +78,13 @@ export const useStore = create<AppState>()(
       setUser: (id, email) => set({ userId: id, userEmail: email }),
       setSession: (id) => set({ sessionId: id }),
       setPhase: (phase) => set({ phase }),
-      setActiveSection: (section) => set({ activeSection: section }),
+      setActiveSection: (section) =>
+        set((state) => ({
+          activeSection: section,
+          visitedSections: state.visitedSections.includes(section)
+            ? state.visitedSections
+            : [...state.visitedSections, section],
+        })),
       setActiveYear: (year) => set({ activeYear: year }),
 
       addMessage: (msg) =>
@@ -165,8 +173,10 @@ export const useStore = create<AppState>()(
         percentComplete: 0,
         missingFields: [],
         phase: 'collecting',
+        activeSection: 'personal-info',
         filingProgress: [],
         filingLog: [],
+        visitedSections: ['personal-info'],
       }),
 
       logout: () =>
@@ -181,6 +191,7 @@ export const useStore = create<AppState>()(
           missingFields: [],
           filingProgress: [],
           filingLog: [],
+          visitedSections: ['personal-info'],
         }),
     }),
     {
@@ -205,6 +216,7 @@ export const useStore = create<AppState>()(
         messages: state.messages,
         taxData: state.taxData,
         percentComplete: state.percentComplete,
+        visitedSections: state.visitedSections,
       }),
     }
   )

@@ -37,7 +37,7 @@ export function HealthInsuranceSection() {
           {['Yes', 'No'].map((opt) => (
             <button
               key={opt}
-              onClick={() => update(opt)}
+              onClick={() => update(hasMarketplace === opt ? '' : opt)}
               className={clsx(
                 'rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors border cursor-pointer',
                 hasMarketplace === opt
@@ -62,10 +62,11 @@ export function HealthInsuranceSection() {
       )}
 
       {hasMarketplace === 'No' && (
-        <div className="p-3 bg-cream border border-hairline rounded-xl">
-          <p className="text-[12px] text-muted leading-relaxed">
-            No Marketplace coverage to report. Employer-sponsored health insurance is
-            already handled through your W-2 and does not need to be entered here.
+        <div className="p-3 bg-amber-pale border border-amber rounded-xl">
+          <p className="text-[12px] text-amber font-semibold mb-0.5">No Marketplace coverage</p>
+          <p className="text-[12px] text-ink leading-relaxed">
+            Employer-sponsored health insurance is already handled through your W-2 and does
+            not need to be entered here.
           </p>
         </div>
       )}
