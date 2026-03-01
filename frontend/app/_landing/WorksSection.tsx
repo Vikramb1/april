@@ -25,7 +25,7 @@ function AppFrame({ phase, children }: { phase: string; children: React.ReactNod
         </div>
         <div style={{ padding: "2px 10px", borderRadius: 999, background: bg, color, fontSize: 10, fontWeight: 600, fontFamily: "var(--font-jakarta)" }}>{label}</div>
         <div style={{ flex: 1 }}/>
-        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#1B4332", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#FAF7F2", fontWeight: 700, fontFamily: "var(--font-jakarta)" }}>JP</div>
+        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#1B4332", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#FAF7F2", fontWeight: 700, fontFamily: "var(--font-jakarta)" }}>AR</div>
       </div>
       <div style={{ height: 420, overflow: "hidden" }}>{children}</div>
     </div>
@@ -208,8 +208,18 @@ function MockupVerify() {
             <span style={{ fontSize: 14, fontWeight: 700, color: "#1B4332", fontFamily: "var(--font-jetbrains)" }}>$2,768.00</span>
           </div>
         </div>
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #E5E7EB" }}>
-          <div style={{ background: "#1B4332", color: "#FAF7F2", borderRadius: 8, padding: "11px 0", textAlign: "center", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-jakarta)" }}>File My Return →</div>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid #E5E7EB", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ background: "#1B4332", color: "#FAF7F2", borderRadius: 10, padding: "9px 0", textAlign: "center", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-jakarta)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <div style={{ width: 16, height: 16, background: "#22c55e", borderRadius: 3, flexShrink: 0 }} />
+            File with FreeTaxUSA
+          </div>
+          <div style={{ border: "1px solid #1B4332", color: "#1B4332", borderRadius: 10, padding: "8px 0", textAlign: "center", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-jakarta)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+            ↓ Download PDF for CPA
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ flex: 1, border: "1px solid #E5E7EB", color: "#9CA3AF", borderRadius: 10, padding: "6px 0", textAlign: "center", fontSize: 10, fontFamily: "var(--font-jakarta)", opacity: 0.5 }}>File with TurboTax</div>
+            <div style={{ flex: 1, border: "1px solid #E5E7EB", color: "#9CA3AF", borderRadius: 10, padding: "6px 0", textAlign: "center", fontSize: 10, fontFamily: "var(--font-jakarta)", opacity: 0.5 }}>Do It Yourself</div>
+          </div>
         </div>
       </div>
     </AppFrame>

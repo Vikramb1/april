@@ -6,8 +6,6 @@ import { EASE } from "./shared";
 
 const LINKS = [
   ["How it Works", "#how-it-works"],
-  ["Features",     "#features"],
-  ["Pricing",      "#pricing"],
   ["FAQ",          "#faq"],
 ];
 
@@ -18,8 +16,8 @@ export function Nav({ scrollY }: { scrollY: number }) {
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, height: 56, zIndex: 100,
-      backdropFilter: "blur(12px)",
-      background: scrolled ? "rgba(250,247,242,0.96)" : "rgba(250,247,242,0.7)",
+      backdropFilter: scrolled ? "blur(12px)" : "none",
+      background: scrolled ? "rgba(250,247,242,0.96)" : "transparent",
       borderBottom: scrolled ? "1px solid #E5DDD0" : "1px solid transparent",
       display: "flex", alignItems: "center", padding: "0 40px", gap: 40,
       transition: `border-color 300ms ${EASE}, background 300ms ${EASE}`,

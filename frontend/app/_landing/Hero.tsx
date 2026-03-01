@@ -2,28 +2,32 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { EASE, enter, StatusDot, OrganicBlob, useScrollY } from "./shared";
+import { EASE, enter, OrganicBlob, useScrollY } from "./shared";
 
-const SIDEBAR_SECTIONS = [
-  { label: "Personal Info", status: "complete" },
-  { label: "Filing Status", status: "complete" },
-  { label: "W-2 Income", status: "complete" },
-  { label: "1099 Income", status: "complete" },
-  { label: "Deductions", status: "in_progress" },
-  { label: "Credits", status: "pending" },
-  { label: "Bank Info", status: "pending" },
-  { label: "Review", status: "pending" },
+const SIDEBAR_GROUPS = [
+  {
+    label: "Personal", complete: true, open: true,
+    subs: [
+      { label: "Personal Info", active: true },
+      { label: "Filing Status", complete: true },
+      { label: "Dependents", complete: true },
+      { label: "Identity Protection", complete: true },
+    ],
+  },
+  { label: "Income", amber: true, open: false, subs: [] },
+  { label: "Deductions & Credits", open: false, subs: [] },
+  { label: "Miscellaneous", open: false, subs: [] },
+  { label: "State", open: false, subs: [] },
+  { label: "Summary", open: false, subs: [] },
 ] as const;
 
-const TIMELINE_ROWS = [
-  { label: "Personal Info", status: "complete", time: "00:01:23" },
-  { label: "Filing Status", status: "complete", time: "00:01:45" },
-  { label: "W-2 Income", status: "complete", time: "00:02:12" },
-  { label: "1099 Income", status: "complete", time: "00:02:34" },
-  { label: "Deductions", status: "in_progress", time: null },
-  { label: "Credits", status: "pending", time: null },
-  { label: "Bank Info", status: "pending", time: null },
-  { label: "Review", status: "pending", time: null },
+const PERSONAL_FIELDS = [
+  { label: "First Name", value: "Alex", mono: false, required: true },
+  { label: "Last Name", value: "Rivera", mono: false, required: true },
+  { label: "Social Security Number", value: "···-··-7834", mono: true, required: true },
+  { label: "Date of Birth", value: "1991-07-22", mono: true, required: true },
+  { label: "Street Address", value: "4802 Maple Ave", mono: false, required: true },
+  { label: "City", value: "Denver", mono: false, required: true },
 ] as const;
 
 // Progress ring matching actual ProgressRing component
@@ -272,6 +276,7 @@ export function Hero() {
           overflow: "hidden",
           position: "relative",
           zIndex: 1,
+          textAlign: "left",
           // Scroll-driven: rises from +90px below, fades + scales in
           opacity: on ? se : 0,
           transform: `translateY(${(1 - se) * 90}px) scale(${0.96 + se * 0.04})`,
@@ -350,7 +355,7 @@ export function Hero() {
               fontFamily: "var(--font-jakarta)",
             }}
           >
-            Filing
+            Collecting
           </div>
 
           <div style={{ flex: 1 }} />
@@ -370,7 +375,7 @@ export function Hero() {
               fontFamily: "var(--font-jakarta)",
             }}
           >
-            JP
+            AR
           </div>
         </div>
 
@@ -387,38 +392,64 @@ export function Hero() {
               overflowY: "hidden",
             }}
           >
-            {/* Greeting */}
-            <p
+            {/* Welcome heading */}
+            <h2
               style={{
-                fontSize: 11,
-                color: "#6B7280",
-                margin: 0,
-                fontFamily: "var(--font-jakarta)",
-              }}
-            >
-              Good morning,
-            </p>
-            <h3
-              style={{
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: 800,
                 color: "#0D0D0D",
-                margin: "2px 0 14px",
+                margin: "0 0 12px",
                 fontFamily: "var(--font-jakarta)",
               }}
             >
-              Jathin
-            </h3>
+              Welcome back
+            </h2>
 
             {/* Progress ring */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "center",
-                marginBottom: 14,
+                marginBottom: 10,
               }}
             >
               <ProgressRing pct={62} />
+            </div>
+
+            {/* Refund estimate card */}
+            <div
+              style={{
+                background: "#EAF4EC",
+                border: "1px solid #1B4332",
+                borderRadius: 10,
+                padding: "7px 10px",
+                marginBottom: 10,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 8,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  fontWeight: 600,
+                  color: "#1B4332",
+                  margin: "0 0 1px",
+                  fontFamily: "var(--font-jakarta)",
+                }}
+              >
+                Est. Refund
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#1B4332",
+                  margin: 0,
+                  fontFamily: "var(--font-jetbrains)",
+                }}
+              >
+                $2,768
+              </p>
             </div>
 
             {/* Year label */}
@@ -429,140 +460,151 @@ export function Hero() {
                 color: "#9CA3AF",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                margin: "0 0 8px",
+                margin: "0 0 6px 2px",
+                fontFamily: "var(--font-jakarta)",
               }}
             >
               2025 Return
             </p>
 
-            {/* Section list */}
-            {SIDEBAR_SECTIONS.map(({ label, status }) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "5px 8px",
-                  borderRadius: 6,
-                  marginBottom: 2,
-                  background:
-                    status === "in_progress" ? "#1B4332" : "transparent",
-                }}
-              >
-                <span
+            {/* Section accordion groups */}
+            {SIDEBAR_GROUPS.map((group) => (
+              <div key={group.label} style={{ marginBottom: 1 }}>
+                <div
                   style={{
-                    fontSize: 11,
-                    fontFamily: "var(--font-jakarta)",
-                    color:
-                      status === "in_progress"
-                        ? "#FAF7F2"
-                        : status === "complete"
-                          ? "#0D0D0D"
-                          : "#9CA3AF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "5px 6px",
+                    borderRadius: 7,
+                    background: group.open ? "rgba(27,67,50,0.1)" : "transparent",
+                    marginBottom: group.open ? 2 : 0,
                   }}
                 >
-                  {label}
-                </span>
-                {status === "complete" && (
                   <span
-                    style={{ fontSize: 10, color: "#1B4332", fontWeight: 700 }}
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      fontFamily: "var(--font-jakarta)",
+                      color: group.open
+                        ? "#1B4332"
+                        : "complete" in group && group.complete
+                          ? "#2D6A4F"
+                          : "amber" in group && group.amber
+                            ? "#D97706"
+                            : "#9CA3AF",
+                    }}
                   >
-                    ✓
+                    {group.label}
                   </span>
-                )}
-                {status === "in_progress" && (
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "#86EFAC",
-                      display: "inline-block",
-                    }}
-                  />
-                )}
-                {status === "pending" && (
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      border: "1px solid #D1D5DB",
-                      display: "inline-block",
-                    }}
-                  />
+                  {"complete" in group && group.complete && (
+                    <span style={{ fontSize: 9, color: "#1B4332", fontWeight: 700 }}>✓</span>
+                  )}
+                  {"amber" in group && group.amber && (
+                    <span style={{ fontSize: 10, color: "#D97706", fontWeight: 700 }}>⚠</span>
+                  )}
+                </div>
+                {group.open && group.subs.length > 0 && (
+                  <div style={{ marginLeft: 7, paddingBottom: 3 }}>
+                    {group.subs.map((sub) => (
+                      <div
+                        key={sub.label}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "3px 7px",
+                          borderRadius: 6,
+                          marginBottom: 1,
+                          fontSize: 10,
+                          fontFamily: "var(--font-jakarta)",
+                          background:
+                            "active" in sub && sub.active
+                              ? "#1B4332"
+                              : "complete" in sub && sub.complete
+                                ? "#EAF4EC"
+                                : "transparent",
+                          color:
+                            "active" in sub && sub.active
+                              ? "#FAF7F2"
+                              : "complete" in sub && sub.complete
+                                ? "#1B4332"
+                                : "#9CA3AF",
+                        }}
+                      >
+                        <span>{sub.label}</span>
+                        {"complete" in sub && sub.complete && !("active" in sub && sub.active) && (
+                          <span style={{ fontSize: 8, fontWeight: 700, color: "#1B4332" }}>✓</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* Main: FilingTimeline matching actual component */}
-          <div style={{ flex: 1, padding: "16px 20px", overflowY: "hidden" }}>
+          {/* Main: PersonalSection form matching actual component */}
+          <div style={{ flex: 1, padding: "14px 18px", overflowY: "hidden" }}>
+            <h2
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#0D0D0D",
+                margin: "0 0 10px",
+                fontFamily: "var(--font-jakarta)",
+              }}
+            >
+              Personal Information
+            </h2>
             <p
               style={{
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 600,
                 color: "#9CA3AF",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                margin: "0 0 12px",
+                margin: "0 0 4px",
                 fontFamily: "var(--font-jakarta)",
               }}
             >
-              Filing Progress
+              Name
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {TIMELINE_ROWS.map(({ label, status, time }) => (
-                <div
-                  key={label}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    background:
-                      status === "in_progress" ? "#FEF3C7" : "transparent",
-                    border:
-                      status === "in_progress"
-                        ? "1px solid #FDE68A"
-                        : "1px solid transparent",
-                    opacity: status === "pending" ? 0.55 : 1,
-                  }}
-                >
-                  <StatusDot status={status} />
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontFamily: "var(--font-jakarta)",
-                      color: status === "in_progress" ? "#0D0D0D" : "#0D0D0D",
-                      flex: 1,
-                    }}
-                  >
-                    {label}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-jetbrains)",
-                      fontSize: 11,
-                      color:
-                        status === "complete"
-                          ? "#6B7280"
-                          : status === "in_progress"
-                            ? "#D97706"
-                            : "#9CA3AF",
-                    }}
-                  >
-                    {status === "complete"
-                      ? time
-                      : status === "in_progress"
-                        ? "Filing now…"
-                        : "Pending"}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {PERSONAL_FIELDS.slice(0, 2).map(({ label, value, required }) => (
+              <div key={label} style={{ borderBottom: "1px solid #E5E7EB", padding: "6px 0" }}>
+                <p style={{ fontSize: 9, color: "#9CA3AF", margin: "0 0 1px", fontFamily: "var(--font-jakarta)" }}>
+                  {label}{required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
+                </p>
+                <p style={{ fontSize: 12, color: "#0D0D0D", margin: 0, fontFamily: "var(--font-jakarta)" }}>
+                  {value}
+                </p>
+              </div>
+            ))}
+            <p
+              style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                margin: "10px 0 4px",
+                fontFamily: "var(--font-jakarta)",
+              }}
+            >
+              Contact &amp; Address
+            </p>
+            {PERSONAL_FIELDS.slice(2).map(({ label, value, mono, required }) => (
+              <div key={label} style={{ borderBottom: "1px solid #E5E7EB", padding: "6px 0" }}>
+                <p style={{ fontSize: 9, color: "#9CA3AF", margin: "0 0 1px", fontFamily: "var(--font-jakarta)" }}>
+                  {label}{required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
+                </p>
+                <p style={{ fontSize: 12, color: "#0D0D0D", margin: 0, fontFamily: mono ? "var(--font-jetbrains)" : "var(--font-jakarta)" }}>
+                  {value}
+                </p>
+              </div>
+            ))}
           </div>
 
           {/* Chat panel matching actual ChatPanel */}
@@ -625,16 +667,7 @@ export function Hero() {
                     margin: 0,
                   }}
                 >
-                  Found your W-2 from Fidelity (
-                  <span
-                    style={{
-                      fontFamily: "var(--font-jetbrains)",
-                      fontSize: 11,
-                    }}
-                  >
-                    $52,000
-                  </span>
-                  ) and 1099-B from Schwab. Filing deductions now.
+                  Hi! I&apos;m April. Let&apos;s get your personal info filled in. What&apos;s your full legal name and date of birth?
                 </p>
               </div>
               {/* User message — matches text-right text-muted ml-8 */}
@@ -647,7 +680,7 @@ export function Hero() {
                     margin: 0,
                   }}
                 >
-                  Looks great!
+                  Alex Rivera, July 22 1991
                 </p>
               </div>
               {/* Typing */}

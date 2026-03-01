@@ -4,80 +4,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { EASE, useInView, enter, SectionLabel, OrganicBlob } from "./shared";
 
-// ─── Pricing ─────────────────────────────────────────────────────────────────
-export function Pricing() {
-  const { ref, inView } = useInView();
-  const tiers = [
-    {
-      name: "Complete", price: "$99",
-      items: ["Everything in Simple", "+ Investment income", "+ Crypto & NFTs", "+ Freelance / 1099-NEC", "+ RSU & stock options", "+ Deduction optimization"],
-      highlight: false,
-    },
-    {
-      name: "Simple", price: "$49",
-      items: ["Federal + state return", "W-2 income", "Auto document collection", "One-click filing"],
-      highlight: true,
-    },
-    {
-      name: "Professional", price: "$199",
-      items: ["Everything in Complete", "+ K-1 partnership returns", "+ Multi-state filing", "+ Foreign income", "+ CPA handoff ready", "+ Audit support"],
-      highlight: false,
-    },
-  ];
-
-  return (
-    <section id="pricing" ref={ref} style={{ background: "#1B4332", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)", position: "relative", overflow: "hidden", color: "#1B4332" }}>
-      <OrganicBlob opacity={0.07} size={450} top="-15%" left="60%"/>
-      <OrganicBlob opacity={0.05} size={300} top="40%" left="-5%" animName="drift2" duration={28}/>
-      <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <SectionLabel light>Pricing</SectionLabel>
-        <h2 style={{ ...enter(inView), fontFamily: "var(--font-jakarta)", fontWeight: 700, fontSize: "clamp(28px,4vw,48px)", lineHeight: 1.15, color: "#FAF7F2", textAlign: "center", marginBottom: 48 }}>
-          Simple pricing.<br/>No surprises.
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(250,247,242,0.2)", borderBottom: "1px solid rgba(250,247,242,0.2)" }}>
-          {tiers.map(({ name, price, items, highlight }, i) => (
-            <div key={name} style={{
-              ...enter(inView, i * 80), padding: "clamp(20px,3vw,32px) clamp(16px,2.5vw,24px)",
-              position: "relative", borderLeft: i > 0 ? "1px solid rgba(250,247,242,0.2)" : "none",
-            }}>
-              {highlight && (
-                <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "#86EFAC",
-                  transform: inView ? "scaleX(1)" : "scaleX(0)", transformOrigin: "left",
-                  transition: `transform 600ms ${EASE} 300ms`,
-                }}/>
-              )}
-              <div style={{ fontFamily: "var(--font-jakarta)", fontWeight: 600, fontSize: 15, color: highlight ? "#86EFAC" : "rgba(250,247,242,0.7)", marginBottom: 6 }}>{name}</div>
-              <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: "clamp(28px,3.5vw,40px)", color: "#FAF7F2", fontWeight: 700, marginBottom: 20 }}>{price}</div>
-              {items.map(item => (
-                <div key={item} style={{ fontSize: 13, color: "rgba(250,247,242,0.65)", fontFamily: "var(--font-jakarta)", padding: "5px 0", borderBottom: "1px solid rgba(250,247,242,0.08)", display: "flex", gap: 6, alignItems: "flex-start" }}>
-                  <span style={{ color: highlight ? "#86EFAC" : "rgba(250,247,242,0.4)", fontSize: 12, marginTop: 1, flexShrink: 0 }}>✓</span>
-                  {item}
-                </div>
-              ))}
-              <Link href="/dashboard">
-                <button style={{
-                  marginTop: 20, width: "100%", padding: "10px 0",
-                  background: highlight ? "#FAF7F2" : "transparent",
-                  color: highlight ? "#1B4332" : "#FAF7F2",
-                  border: highlight ? "none" : "1px solid rgba(250,247,242,0.3)",
-                  borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                  fontFamily: "var(--font-jakarta)",
-                }}>Get started →</button>
-              </Link>
-            </div>
-          ))}
-        </div>
-        <p style={{ ...enter(inView, 400), textAlign: "center", fontSize: 13, color: "#86EFAC", marginTop: 20, fontFamily: "var(--font-jakarta)" }}>
-          ★ 100% accuracy guarantee — if we miss a field, we&rsquo;ll refile for free
-        </p>
-      </div>
-    </section>
-  );
-}
-
 // ─── Security ─────────────────────────────────────────────────────────────────
 const SECURITY_CARDS = [
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="3" width="16" height="12" rx="2" stroke="#1B4332" strokeWidth="1.5"/>
+        <path d="M6 17h8M10 15v2" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    heading: "Runs on your machine",
+    body: "The browser agent runs entirely on your local device. Chrome is controlled via CDP on localhost — nothing is proxied through an external server.",
+  },
   {
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -86,28 +24,19 @@ const SECURITY_CARDS = [
         <circle cx="10" cy="13.5" r="1.5" fill="#1B4332"/>
       </svg>
     ),
-    heading: "256-bit AES encryption",
-    body: "Every document, credential, and field is encrypted end-to-end. Data is never stored in plaintext.",
+    heading: "Credentials never leave your device",
+    body: "Your bank passwords are typed directly into your own Chrome browser. They are never sent to our backend, stored in our database, or logged anywhere.",
   },
   {
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="7" stroke="#1B4332" strokeWidth="1.5"/>
-        <path d="M10 6v4l3 3" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
+        <ellipse cx="10" cy="5" rx="7" ry="3" stroke="#1B4332" strokeWidth="1.5"/>
+        <path d="M3 5v5c0 1.657 3.134 3 7 3s7-1.343 7-3V5" stroke="#1B4332" strokeWidth="1.5"/>
+        <path d="M3 10v5c0 1.657 3.134 3 7 3s7-1.343 7-3v-5" stroke="#1B4332" strokeWidth="1.5"/>
       </svg>
     ),
-    heading: "Session-only credentials",
-    body: "We never store your bank passwords. Credentials exist only during the collection session, then are discarded.",
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 2L17 5.5V10C17 14 13.5 17.5 10 18C6.5 17.5 3 14 3 10V5.5L10 2Z" stroke="#1B4332" strokeWidth="1.5" strokeLinejoin="round"/>
-        <path d="M7 10l2 2 4-4" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    heading: "SOC 2 Type II certified",
-    body: "Independently audited each year. Our security controls meet the highest industry standards.",
+    heading: "Local SQLite storage",
+    body: "Your tax data is stored in a SQLite file on your own machine. No cloud database, no external storage. You can inspect or delete the file any time.",
   },
   {
     icon: (
@@ -116,36 +45,35 @@ const SECURITY_CARDS = [
         <rect x="13" y="11" width="4" height="5" rx="1" stroke="#1B4332" strokeWidth="1.2"/>
       </svg>
     ),
-    heading: "Full audit trail",
-    body: "Every agent action is logged with a timestamp. You can replay exactly what April did at any point.",
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 3v10M6 13l4 4 4-4" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M3 17h14" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    ),
-    heading: "Portal sessions auto-expire",
-    body: "As soon as collection is complete, all portal sessions are closed and cleared. No lingering access.",
+    heading: "Every action is logged",
+    body: "Every browser click, page load, and document download is timestamped and shown in the dashboard in real time. Nothing happens in the background.",
   },
   {
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="7" stroke="#1B4332" strokeWidth="1.5"/>
-        <path d="M7 10h6M10 7v6" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M13 7l-6 6" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M10 6v4l3 3" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
-    heading: "Zero data sold",
-    body: "Your tax data is yours. We don't sell, share, or use it to train models. Ever.",
+    heading: "Sessions close when done",
+    body: "Browser sessions to your financial portals are opened only during collection and closed the moment it completes. No persistent portal access is maintained.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2L17 5.5V10C17 14 13.5 17.5 10 18C6.5 17.5 3 14 3 10V5.5L10 2Z" stroke="#1B4332" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M7 10l2 2 4-4" stroke="#1B4332" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    heading: "No data sold or shared",
+    body: "Your documents and extracted fields are never sold or shared. The only external API calls are to OpenAI for document extraction and the chat assistant.",
   },
 ];
 
 export function Security() {
   const { ref, inView } = useInView();
   return (
-    <section ref={ref} style={{ background: "#fff", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)" }}>
+    <section ref={ref} style={{ background: "#F5F0E8", padding: "clamp(60px,8vw,100px) clamp(20px,5vw,60px)" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <SectionLabel>Security</SectionLabel>
         <h2 style={{ ...enter(inView), fontFamily: "var(--font-jakarta)", fontWeight: 700, fontSize: "clamp(24px,3vw,38px)", lineHeight: 1.2, color: "#0D0D0D", marginBottom: 48 }}>
@@ -155,7 +83,7 @@ export function Security() {
           {SECURITY_CARDS.map(({ icon, heading, body }, i) => (
             <div key={heading} style={{
               ...enter(inView, i * 60),
-              background: "#FAF7F2", borderRadius: 12,
+              background: "#fff", borderRadius: 12,
               border: "1px solid #E5DDD0", padding: "clamp(16px,2vw,24px)",
             }}>
               <div style={{ width: 40, height: 40, background: "#EAF4EC", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
@@ -277,7 +205,7 @@ export function Footer() {
       <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
         <Image src="/april-logo-no-bg.png" alt="April" width={80} height={28} style={{ objectFit: "contain", height: 22, width: "auto" }}/>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          {[["How it Works","#how-it-works"],["Pricing","#pricing"],["FAQ","#faq"]].map(([label, href]) => (
+          {[["How it Works","#how-it-works"],["FAQ","#faq"]].map(([label, href]) => (
             <a key={href} href={href} style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-jakarta)", textDecoration: "none" }}
               onMouseEnter={e => (e.currentTarget.style.color="#0D0D0D")}
               onMouseLeave={e => (e.currentTarget.style.color="#9CA3AF")}
