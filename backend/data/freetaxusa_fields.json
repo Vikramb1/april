@@ -250,7 +250,8 @@
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Personal Information",
       "page_order": 3,
-      "fields": []
+      "fields": [],
+      "notes": "Action/decision page with 'Add a Dependent' button. Skipping per baseline instructions (single filer, no dependents)."
     },
     {
       "page_title": "Personal Information Summary",
@@ -275,21 +276,24 @@
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Personal Information",
       "page_order": 5,
-      "fields": []
+      "fields": [],
+      "notes": "Promotional/upsell page with no form fields."
     },
     {
       "page_title": "Transition Page",
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Personal Information",
       "page_order": 6,
-      "fields": []
+      "fields": [],
+      "notes": "Informational transition page between Personal and Income sections."
     },
     {
       "page_title": "Your Wages (W-2)",
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Income",
       "page_order": 7,
-      "fields": []
+      "fields": [],
+      "notes": "Summary/list page showing existing W-2 entries. Shows ACME CORP with $75,000 wages. Navigation buttons to add/edit W-2 forms."
     },
     {
       "page_title": "Edit W-2: Acme Corp Wages",
@@ -900,7 +904,42 @@
       "page_url_pattern": "/taxes2025/taxcontrol",
       "section": "Income",
       "page_order": 10,
-      "fields": []
+      "fields": [],
+      "notes": "Validation/error page about invalid EIN. No form fields, just warning message and Continue/Previous Page buttons."
+    },
+    {
+      "page_title": "Your Income",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 11,
+      "fields": [],
+      "notes": "Summary/navigation page showing all available income categories. W-2 already recorded with $75,000. Navigation buttons for other income types (Investments and Savings, Unemployment Compensation, Social Security Benefits, Retirement Income, Taxable State Refund, Capital Loss Carryovers, Business and Rental Income, Uncommon Income). No form input fields on this page."
+    },
+    {
+      "page_title": "Cryptocurrency",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 12,
+      "fields": [
+        {
+          "id": "is_temp_cryptocurrency",
+          "label": "Did you receive, sell, exchange, or otherwise dispose of any cryptocurrency during 2025?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
+      ]
+    },
+    {
+      "page_title": "Your 2025 Income Summary",
+      "page_url_pattern": "/taxes2025/taxcontrol",
+      "section": "Income",
+      "page_order": 13,
+      "fields": [],
+      "notes": "Summary/navigation page showing all income categories with amounts. Total Income: $75,000 (Wages $75,000, all others $0). Links to each income type for editing. No form input fields on this page."
     }
   ],
   "pdf_upload_sections": [],
