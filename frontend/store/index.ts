@@ -28,6 +28,7 @@ interface AppState {
   // Filing (Phase 3)
   filingProgress: SectionResult[]
   filingLog: FilingLogEntry[]
+  currentFilingSection: string | null
 
   // Actions
   setUser: (id: number, email: string) => void
@@ -72,6 +73,7 @@ export const useStore = create<AppState>()(
 
       filingProgress: [],
       filingLog: [],
+      currentFilingSection: null,
 
       saveStatus: 'idle' as const,
 
@@ -137,6 +139,17 @@ export const useStore = create<AppState>()(
             if (alreadyDone) return state
           }
 
+          // section_start — update currentFilingSection, add log, no progress change
+          if (event.type === 'section_start' && event.section) {
+            return {
+              currentFilingSection: event.section,
+              filingLog: [...state.filingLog, {
+                time,
+                message: `Starting ${event.section}... (${(event.index ?? 0) + 1}/${event.total ?? 9})`,
+              }],
+            }
+          }
+
           const log: FilingLogEntry = {
             time,
             message:
@@ -166,12 +179,13 @@ export const useStore = create<AppState>()(
           return {
             filingLog: [...state.filingLog, log],
             filingProgress: newProgress,
+            currentFilingSection: event.type === 'complete' ? null : state.currentFilingSection,
             phase: newPhase,
           }
         })
       },
 
-      resetFiling: () => set({ filingProgress: [], filingLog: [] }),
+      resetFiling: () => set({ filingProgress: [], filingLog: [], currentFilingSection: null }),
 
       clearMessages: () => set({ messages: [] }),
 
@@ -183,6 +197,7 @@ export const useStore = create<AppState>()(
         activeSection: 'personal-info',
         filingProgress: [],
         filingLog: [],
+        currentFilingSection: null,
         visitedSections: ['personal-info'],
       }),
 
@@ -198,6 +213,7 @@ export const useStore = create<AppState>()(
           missingFields: [],
           filingProgress: [],
           filingLog: [],
+          currentFilingSection: null,
           visitedSections: ['personal-info'],
         }),
     }),
@@ -226,6 +242,7 @@ export const useStore = create<AppState>()(
         visitedSections: state.visitedSections,
         filingProgress: state.filingProgress,
         filingLog: state.filingLog,
+        currentFilingSection: state.currentFilingSection,
       }),
     }
   )
