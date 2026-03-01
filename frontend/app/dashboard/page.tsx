@@ -52,8 +52,16 @@ function CurrentYearPanel() {
     })
   }, [taxData, phase])
 
-  if ((phase === 'filing' || phase === 'filed') && activeSection === 'review') {
+  if (phase === 'filing' && activeSection === 'review') {
     return <FilingView />
+  }
+
+  if (phase === 'filed' && activeSection === 'review') {
+    return (
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6">
+        <ReviewSection frozenYear="filed" />
+      </div>
+    )
   }
 
   if (activeSection === 'review') {
@@ -79,8 +87,10 @@ function CurrentYearPanel() {
   return (
     <div ref={scrollRef} className={`flex-1 overflow-y-auto scrollbar-hide px-6 pt-6 pb-6 relative ${isFiling ? 'pointer-events-none opacity-60' : ''}`}>
       {isFiling && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-amber-pale border border-amber rounded-full px-4 py-1.5 text-[12px] text-amber font-medium pointer-events-auto">
-          Filing in progress — fields are locked
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 rounded-full px-4 py-1.5 text-[12px] font-medium pointer-events-auto ${
+          phase === 'filed' ? 'bg-green-pale border border-green text-green' : 'bg-amber-pale border border-amber text-amber'
+        }`}>
+          {phase === 'filed' ? '✓ Filed' : 'Filing in progress — fields are locked'}
         </div>
       )}
       {saveStatus !== 'idle' && (

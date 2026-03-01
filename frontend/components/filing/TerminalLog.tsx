@@ -12,7 +12,7 @@ export function TerminalLog() {
   }, [logs])
 
   return (
-    <div className="bg-white border border-hairline rounded-xl p-4 font-mono text-[12px] text-muted h-40 overflow-y-auto mt-4">
+    <div className="bg-white border border-hairline rounded-xl p-4 font-mono text-[12px] text-muted h-40 overflow-y-auto scrollbar-hide mt-4">
       {logs.length === 0 && (
         <p className="text-[#9CA3AF]">Filing agent starting...</p>
       )}

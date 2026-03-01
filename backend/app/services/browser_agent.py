@@ -303,9 +303,34 @@ def _client() -> "AsyncBrowserUse":
     return AsyncBrowserUse(api_key=settings.browser_use_api_key)
 
 
-def _is_success(status) -> bool:
-    status_str = str(status).lower()
-    return "finished" in status_str or "completed" in status_str
+def _is_success(result) -> bool:
+    """Check if a task truly succeeded — not just finished, but actually completed its goal."""
+    # First check explicit is_success field
+    if hasattr(result, 'is_success') and result.is_success is not None:
+        if not result.is_success:
+            return False
+
+    # Check status
+    status_str = str(result.status).lower()
+    if "finished" not in status_str and "completed" not in status_str:
+        return False
+
+    # Check output for failure indicators even when status is "finished"
+    output = getattr(result, 'output', '') or ''
+    output_lower = output.lower()
+    FAILURE_INDICATORS = [
+        'captcha', 'hcaptcha', 'recaptcha',
+        'cannot bypass', 'bot protection', 'bot detection',
+        'blocked', 'access denied',
+        'request_human_control',
+        'could not', 'unable to', 'failed to',
+    ]
+    for indicator in FAILURE_INDICATORS:
+        if indicator in output_lower:
+            logger.warning(f"  Task output indicates failure: ...{indicator}...")
+            return False
+
+    return True
 
 
 async def _run_task_with_retry(client, run_kwargs, max_retries=2, timeout=300):
@@ -385,42 +410,61 @@ async def run_submission(db: Session, user_id: int, on_section_done=None) -> lis
                 "password": settings.freetax_password,
             }
 
-        try:
-            result = await _run_task_with_retry(client, run_kwargs)
+        max_section_retries = 2
+        for attempt in range(max_section_retries + 1):
+            try:
+                result = await _run_task_with_retry(client, run_kwargs)
 
-            success = _is_success(result.status)
-            error = None if success else f"Task status: {result.status}"
+                success = _is_success(result)
+                output = getattr(result, 'output', '') or ''
+                error = None if success else (output[:200] or f"Task status: {result.status}")
 
-            logger.info(f"  -> {'OK' if success else 'FAIL'}: {section}")
+                if not success and attempt < max_section_retries:
+                    logger.warning(
+                        f"  -> RETRY {attempt + 1}/{max_section_retries} for {section}: {error[:80]}"
+                    )
+                    await __import__('asyncio').sleep(5)
+                    continue
 
-            entry = {
-                "section_name": section,
-                "success": success,
-                "error": error,
-            }
-            results.append(entry)
-            if on_section_done:
-                on_section_done({
-                    "type": "section_complete",
-                    "section": section,
+                logger.info(f"  -> {'OK' if success else 'FAIL'}: {section}")
+
+                entry = {
+                    "section_name": section,
                     "success": success,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
-        except Exception as e:
-            logger.error(f"  -> ERROR on {section}: {e}")
-            entry = {
-                "section_name": section,
-                "success": False,
-                "error": str(e),
-            }
-            results.append(entry)
-            if on_section_done:
-                on_section_done({
-                    "type": "section_complete",
-                    "section": section,
+                    "error": error,
+                }
+                results.append(entry)
+                if on_section_done:
+                    on_section_done({
+                        "type": "section_complete",
+                        "section": section,
+                        "success": success,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                break
+            except Exception as e:
+                if attempt < max_section_retries:
+                    logger.warning(
+                        f"  -> RETRY {attempt + 1}/{max_section_retries} for {section}: {e}"
+                    )
+                    await __import__('asyncio').sleep(5)
+                    continue
+
+                logger.error(f"  -> ERROR on {section}: {e}")
+                entry = {
+                    "section_name": section,
                     "success": False,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+                    "error": str(e),
+                }
+                results.append(entry)
+                if on_section_done:
+                    on_section_done({
+                        "type": "section_complete",
+                        "section": section,
+                        "success": False,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                break
 
     return results
 
@@ -471,7 +515,7 @@ async def run_section(
     try:
         result = await _run_task_with_retry(client, run_kwargs)
 
-        success = _is_success(result.status)
+        success = _is_success(result)
         return {
             "section_name": section_name,
             "success": success,

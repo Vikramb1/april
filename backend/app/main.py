@@ -203,18 +203,23 @@ async def submit_taxes(body: SubmitTaxesRequest, db: Session = Depends(get_db)):
     _filing_events[body.user_id] = []
 
     async def _run_filing(user_id: int):
+        import logging
+        log = logging.getLogger("uvicorn")
+        log.info(f"[filing] Background task started for user {user_id}")
         from app.services.browser_agent import run_submission
         from app.database.session import SessionLocal
         bg_db = SessionLocal()
         try:
             results = await run_submission(bg_db, user_id, on_section_done=lambda evt: _emit_filing_event(user_id, evt))
             overall = all(r["success"] for r in results)
+            log.info(f"[filing] Completed for user {user_id}, overall={overall}")
             _emit_filing_event(user_id, {
                 "type": "complete",
                 "overall_success": overall,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as e:
+            log.error(f"[filing] Error for user {user_id}: {e}", exc_info=True)
             _emit_filing_event(user_id, {
                 "type": "error",
                 "message": str(e),
@@ -252,7 +257,16 @@ async def filing_stream(user_id: int):
         finally:
             _filing_waiters.get(user_id, []).remove(waiter)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+        },
+    )
 
 
 # ── POST /retry-section ────────────────────────────────────────────────────

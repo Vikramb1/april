@@ -19,7 +19,7 @@ export function FilingView() {
   const allSuccess = filingProgress.every((r) => r.success)
 
   return (
-    <div className="p-6 overflow-y-auto h-full">
+    <div className="p-6 overflow-y-auto scrollbar-hide h-full">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-[18px] font-bold text-ink">

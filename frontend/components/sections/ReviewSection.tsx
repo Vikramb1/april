@@ -92,8 +92,9 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
   const [showModal, setShowModal] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
 
-  // Use dummy data for past years, live data for current year
-  const taxData = frozenYear ? PAST_YEAR_DATA[frozenYear]?.taxData ?? liveTaxData : liveTaxData
+  // Use dummy data for past years, live data for current year and "filed" state
+  const isFiled = frozenYear === 'filed'
+  const taxData = isFiled ? liveTaxData : frozenYear ? PAST_YEAR_DATA[frozenYear]?.taxData ?? liveTaxData : liveTaxData
 
   const tr = taxData?.tax_return ?? {}
   const w2s = taxData?.w2_forms ?? []
@@ -164,9 +165,14 @@ export function ReviewSection({ frozenYear }: ReviewSectionProps) {
   return (
     <div>
       <h2 className="text-[18px] font-bold text-ink mb-1">
-        {frozenYear ? `${frozenYear} Tax Return` : 'Review Your Return'}
+        {isFiled ? '2025 Tax Return' : frozenYear ? `${frozenYear} Tax Return` : 'Review Your Return'}
       </h2>
-      {frozenYear && PAST_YEAR_DATA[frozenYear] && (
+      {isFiled && (
+        <div className="inline-flex items-center gap-2 bg-green-pale text-green text-[12px] font-medium px-3 py-1 rounded-full mb-4">
+          ✓ Filed · {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </div>
+      )}
+      {frozenYear && !isFiled && PAST_YEAR_DATA[frozenYear] && (
         <div className="inline-flex items-center gap-2 bg-green-pale text-green text-[12px] font-medium px-3 py-1 rounded-full mb-4">
           ✓ Filed · {PAST_YEAR_DATA[frozenYear].filedDate}
         </div>

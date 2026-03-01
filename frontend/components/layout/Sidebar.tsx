@@ -135,6 +135,7 @@ function isSectionStarted(key: string, taxData: TaxData | null): boolean {
 export function Sidebar() {
   const {
     userId,
+    phase,
     activeSection,
     activeYear,
     taxData,
@@ -145,6 +146,7 @@ export function Sidebar() {
   } = useStore(
     useShallow((s) => ({
       userId: s.userId,
+      phase: s.phase,
       activeSection: s.activeSection,
       activeYear: s.activeYear,
       taxData: s.taxData,
@@ -158,11 +160,12 @@ export function Sidebar() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const isPastYear = activeYear !== CURRENT_TAX_YEAR;
+  const isFiled = phase === 'filed';
   const pastYearRecord = isPastYear ? PAST_YEAR_DATA[activeYear] : null;
 
   const allSubKeys = SECTION_GROUPS.flatMap((g) => g.subsections.map((s) => s.key));
   const countableKeys = allSubKeys.filter((k) => k !== 'review');
-  const completedCount = isPastYear
+  const completedCount = (isPastYear || isFiled)
     ? countableKeys.length
     : countableKeys.filter((k) =>
         isSectionComplete(k, taxData, visitedSections.includes(k)),
@@ -195,7 +198,7 @@ export function Sidebar() {
       <div className="flex justify-center mb-5">
         <ProgressRing
           percent={effectivePercent}
-          subLabel={isPastYear ? "filed" : "complete"}
+          subLabel={isPastYear || isFiled ? "filed" : "complete"}
         />
       </div>
 
@@ -231,11 +234,11 @@ export function Sidebar() {
           const isOpen = effectiveOpenGroup === group.key;
 
           const allComplete = group.subsections.every((sub) =>
-            isPastYear ||
+            isPastYear || isFiled ||
             isSectionComplete(sub.key, taxData, visitedSections.includes(sub.key)),
           );
           const anyProgress =
-            !isPastYear &&
+            !isPastYear && !isFiled &&
             !allComplete &&
             group.subsections.some((sub) => {
               const visited = visitedSections.includes(sub.key);
@@ -294,8 +297,8 @@ export function Sidebar() {
                   {group.subsections.map((sub) => {
                     const isActive = activeSection === sub.key && !isPastYear;
                     const visited = visitedSections.includes(sub.key);
-                    const complete = isSectionComplete(sub.key, taxData, visited);
-                    const started = !complete && isSectionStarted(sub.key, taxData);
+                    const complete = isFiled || isSectionComplete(sub.key, taxData, visited);
+                    const started = !complete && !isFiled && isSectionStarted(sub.key, taxData);
 
                     return (
                       <button
